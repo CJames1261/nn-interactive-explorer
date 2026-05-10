@@ -265,11 +265,11 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   fill: var(--gray-dark); text-anchor: middle; pointer-events: none;
 }
 .weight-label {
-  font-size: 8px; font-family: "Consolas",monospace;
+  font-size: 10px; font-family: "Consolas",monospace;
   fill: var(--gray); text-anchor: middle; dominant-baseline: central;
   pointer-events: none; transition: all .3s;
 }
-.weight-label.active { fill: var(--text); font-size: 9px; font-weight: 600; }
+.weight-label.active { fill: var(--text); font-size: 11px; font-weight: 700; }
 .layer-title {
   font-size: 11px; font-weight: 700; fill: var(--gray);
   text-anchor: middle; text-transform: uppercase; letter-spacing: .04em;
@@ -1430,7 +1430,7 @@ Our companion Python code uses this batch form.`,
     for (let i = 0; i < 3; i++) {
       activateNode(2, i, 'active-bwd', '∂L/∂a', fc(s.dA2[i]));
       activateEdge(2, i, 0, 'flow-bwd');
-      showWeight(2, i, 0, '∂w='+fc(s.dW3[i]));
+      showWeight(2, i, 0, '∂L/∂W^[3]_'+(i+1)+'='+fc(s.dW3[i]));
     }
   }
 },
@@ -1590,9 +1590,9 @@ Our companion Python code uses this batch form.`,
         '∂L/∂z'+(i+1), fc(s.dZ1[i]));
       activateEdge(0, 0, i, alive ? 'flow-bwd' : 'edge dead');
       // Edge label = the weight gradient with full name (∂L/∂w_i)
-      showWeight(0, 0, i, '∂L/∂w'+(i+1)+'='+fc(s.dW1g[i]));
+      showWeight(0, 0, i, '∂L/∂W^[1]_'+(i+1)+'='+fc(s.dW1g[i]));
       // Below each Hidden 1 node = the bias gradient
-      showBias(1, i, '∂L/∂b'+(i+1)+'='+fc(s.db1g[i]));
+      showBias(1, i, '∂L/∂b^[1]_'+(i+1)+'='+fc(s.db1g[i]));
     }
   }
 },
