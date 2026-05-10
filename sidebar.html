@@ -600,6 +600,9 @@ const W3 = [0.9, -0.5, 0.7];
 const b3 = -0.05;
 
 const LR = 0.1;
+// L2 regularization strength (λ). Using 0.01 for visual clarity in the demo;
+// in real training values like 5e-4 to 1e-2 are common. Biases are NOT regularized.
+const L2_LAMBDA = 0.01;
 
 // ════════════════════════════════════════════════════════════════
 // SECTION 2: FORWARD + BACKWARD COMPUTATION
@@ -620,18 +623,28 @@ function computeAll(x) {
   const Z3val = A2[0]*W3[0] + A2[1]*W3[1] + A2[2]*W3[2] + b3;
   const yPred = Z3val;
 
-  const loss = (yTrue - yPred) ** 2;
+  const lossMSE = (yTrue - yPred) ** 2;
+
+  // --- L2 regularization penalty: λ · Σ w² (over weights only, not biases) ---
+  const sumSq = arr => arr.reduce((s, w) => s + w * w, 0);
+  const l2W1Sum = sumSq(W1);
+  const l2W2Sum = W2.reduce((s, row) => s + sumSq(row), 0);
+  const l2W3Sum = sumSq(W3);
+  const l2Sum   = l2W1Sum + l2W2Sum + l2W3Sum;
+  const l2Pen   = L2_LAMBDA * l2Sum;
+  const loss    = lossMSE + l2Pen;          // total objective the optimizer sees
 
   // --- Backward ---
   const dLdy = -2 * (yTrue - yPred);
 
-  const dW3 = A2.map(a => a * dLdy);
+  // Data-only weight gradients (chain-rule from MSE)
+  const dW3data = A2.map(a => a * dLdy);
   const db3g = dLdy;
   const dA2 = W3.map(w => dLdy * w);
 
   const dZ2 = dA2.map((d, i) => Z2[i] > 0 ? d : 0);
 
-  const dW2 = A1.map(a => dZ2.map(d => a * d));
+  const dW2data = A1.map(a => dZ2.map(d => a * d));
   const db2g = [...dZ2];
 
   // ∂L/∂a^[1]_i = Σ_j W^[2]_ij × ∂L/∂z^[2]_j
@@ -642,8 +655,18 @@ function computeAll(x) {
 
   const dZ1 = dA1.map((d, i) => Z1[i] > 0 ? d : 0);
 
-  const dW1g = dZ1.map(d => x * d);
+  const dW1data = dZ1.map(d => x * d);
   const db1g = [...dZ1];
+
+  // L2 contribution to each weight gradient: +2λw
+  const dW1L2 = W1.map(w => 2 * L2_LAMBDA * w);
+  const dW2L2 = W2.map(row => row.map(w => 2 * L2_LAMBDA * w));
+  const dW3L2 = W3.map(w => 2 * L2_LAMBDA * w);
+
+  // Final regularized weight gradients (what the optimizer actually uses)
+  const dW1g = dW1data.map((d, i) => d + dW1L2[i]);
+  const dW2  = dW2data.map((row, i) => row.map((d, j) => d + dW2L2[i][j]));
+  const dW3  = dW3data.map((d, i) => d + dW3L2[i]);
 
   const W1n = W1.map((w, i) => w - LR * dW1g[i]);
   const b1n = b1.map((b, i) => b - LR * db1g[i]);
@@ -653,8 +676,14 @@ function computeAll(x) {
   const b3n = b3 - LR * db3g;
 
   return {
-    x, yTrue, Z1, A1, Z2, A2, Z3: Z3val, yPred, loss,
-    dLdy, dW3, db3g, dA2, dZ2, dW2, db2g, dA1, dZ1, dW1g, db1g,
+    x, yTrue, Z1, A1, Z2, A2, Z3: Z3val, yPred,
+    lossMSE, l2W1Sum, l2W2Sum, l2W3Sum, l2Sum, l2Pen, loss, lambda: L2_LAMBDA,
+    dLdy,
+    dW3data, dW3L2, dW3, db3g,
+    dA2, dZ2,
+    dW2data, dW2L2, dW2, db2g,
+    dA1, dZ1,
+    dW1data, dW1L2, dW1g, db1g,
     W1n, b1n, W2n, b2n, W3n, b3n
   };
 }
@@ -1281,15 +1310,15 @@ function getSteps(s) {
 + `\\(L_{\\text{sample}} = (y_{\\text{true}} - \\hat{y})^2\\)\n`
 + `         = (${f4(s.yTrue)} - ${fc(s.yPred)})²\n`
 + `         = (${f4(s.yTrue - s.yPred)})²\n`
-+ `         = <span class="result">${f4(s.loss)}</span>\n\n`
++ `         = <span class="result">${f4(s.lossMSE)}</span>\n\n`
 + `For a batch of N samples: \\(L = \\frac{1}{N} \\sum_n L_{\\text{sample},n}\\)`,
   explain: `<p><strong>Mean Squared Error</strong> measures how far off our prediction is from the true value. If you've done any statistics or regression, this is the same squared-residual you know from OLS -- just applied one sample at a time.</p>
 <p>Why square it?</p>
 <p>1. All errors become positive (whether we overestimate or underestimate)<br>
 2. Large errors are punished <strong>much</strong> more than small ones (an error of 2 costs 4x as much as an error of 1)</p>
-<p>Our loss: <strong>${f4(s.loss)}</strong>. ${s.loss < 0.01 ? 'Very small -- the prediction is close!' : s.loss < 0.1 ? 'Moderate error.' : 'Significant error -- the network needs to adjust its weights.'}</p>
-<p>🏔️ <em>Mountain analogy: We just checked our altimeter. Loss = ${f4(s.loss)} is our altitude -- ${s.loss < 0.01 ? 'we\'re very close to the valley floor!' : s.loss < 0.1 ? 'we\'re partway down.' : 'we\'re still high up. Time to figure out which direction is downhill.'}</em></p>
-<div class="key-insight"><strong>What comes next:</strong> We know the error. Now we need to figure out <strong>which of the 22 weights to blame</strong> for it and <strong>how much to adjust each one</strong>. That's what backpropagation does -- it's like a sensitivity analysis that traces the error back to each individual parameter.</div>`,
+<p>Our MSE: <strong>${f4(s.lossMSE)}</strong>. ${s.lossMSE < 0.01 ? 'Very small -- the prediction is close!' : s.lossMSE < 0.1 ? 'Moderate error.' : 'Significant error -- the network needs to adjust its weights.'}</p>
+<p>🏔️ <em>Mountain analogy: We just checked our altimeter. MSE = ${f4(s.lossMSE)} is our altitude -- ${s.lossMSE < 0.01 ? 'we\'re very close to the valley floor!' : s.lossMSE < 0.1 ? 'we\'re partway down.' : 'we\'re still high up. Time to figure out which direction is downhill.'}</em></p>
+<div class="key-insight"><strong>What comes next:</strong> Before we trace the blame backward, we'll add one extra term to the loss — an <strong>L2 regularization penalty</strong> on the weights — that keeps the network from growing crazy-large weights and helps it generalize. Then backpropagation will use the <em>regularized</em> loss as its starting point.</div>`,
   render(s) {
     dimAll();
     activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
@@ -1297,6 +1326,86 @@ function getSteps(s) {
     getEl('c-loss').setAttribute('stroke', 'var(--red)');
     getEl('c-loss').setAttribute('fill', 'var(--red-light)');
     getEl('lbl-loss').textContent = 'L';
+    getEl('val-loss').textContent = f4(s.lossMSE);
+  }
+},
+
+// ── NEW: Regularized Loss (L2 penalty) ──
+{
+  phase: 'loss', title: 'Regularized Loss: L2 Penalty',
+  formula: String.raw`$$L_{\text{total}} = \underbrace{(y_{\text{true}} - \hat{y})^2}_{\text{MSE — fit the data}} + \underbrace{\lambda \sum_w w^2}_{\text{L2 penalty — stay simple}}`,
+  formulaCaption: '<strong>What it does:</strong> Adds a penalty for large weights. The network now optimizes two things at once — fit the data (low MSE) AND keep weights small (better generalization).',
+  calc: (() => {
+    let t = vd('Variable definitions:', [
+      ['\\(L_{\\text{total}}\\)',          'final objective the optimizer minimizes (MSE + penalty)'],
+      ['\\(\\text{MSE}\\)',                 'squared-error from the previous step (fit term)'],
+      ['\\(\\lambda\\)',                    'regularization strength — how harshly to punish big weights'],
+      ['\\(\\sum_w w^2\\)',                 'sum of squared weights across the WHOLE network'],
+      ['\\(W^{[1]}, W^{[2]}, W^{[3]}\\)',  'the 15 weights (biases are NOT regularized)']
+    ], `Note: only weights enter the penalty. Biases are left alone because they shift the function rather than scale it.`) + `\n`;
+
+    t += `─── Step A: sum of squared weights, layer by layer ───\n\n`;
+    // Layer 1
+    t += `Layer 1 weights (3): \\(W^{[1]}\\) = [${W1.map(fw).join(', ')}]\n`;
+    t += `  \\(\\sum (W^{[1]})^2\\) = ${W1.map(w => `${fw(w)}²`).join(' + ')}\n`;
+    t += `             = ${W1.map(w => fc(w*w)).join(' + ')}\n`;
+    t += `             = <span class="result">${fc(s.l2W1Sum)}</span>\n\n`;
+    // Layer 2
+    t += `Layer 2 weights (9):\n`;
+    for (let i = 0; i < 3; i++) {
+      t += `  row ${i+1}: ${W2[i].map(w => `${fw(w)}²`).join(' + ')} = ${fc(W2[i].reduce((s,w)=>s+w*w,0))}\n`;
+    }
+    t += `  \\(\\sum (W^{[2]})^2\\) = <span class="result">${fc(s.l2W2Sum)}</span>\n\n`;
+    // Layer 3
+    t += `Output weights (3): \\(W^{[3]}\\) = [${W3.map(fw).join(', ')}]\n`;
+    t += `  \\(\\sum (W^{[3]})^2\\) = ${W3.map(w => `${fw(w)}²`).join(' + ')}\n`;
+    t += `             = ${W3.map(w => fc(w*w)).join(' + ')}\n`;
+    t += `             = <span class="result">${fc(s.l2W3Sum)}</span>\n\n`;
+
+    t += `Total: \\(\\sum_w w^2\\) = ${fc(s.l2W1Sum)} + ${fc(s.l2W2Sum)} + ${fc(s.l2W3Sum)} = <span class="result">${fc(s.l2Sum)}</span>\n\n`;
+
+    t += `─── Step B: multiply by λ to get the penalty ───\n\n`;
+    t += `  \\(\\lambda\\) = ${s.lambda}    (regularization strength, fixed hyperparameter)\n`;
+    t += `  \\(\\text{L2 penalty} = \\lambda \\sum_w w^2\\) = ${s.lambda} × ${fc(s.l2Sum)} = <span class="result">${fc(s.l2Pen)}</span>\n\n`;
+
+    t += `─── Step C: add to MSE to get the full loss ───\n\n`;
+    t += `  MSE        = ${f4(s.lossMSE)}     (from previous step)\n`;
+    t += `  L2 penalty = ${f4(s.l2Pen)}\n`;
+    t += `  ────────────────────\n`;
+    t += `  \\(L_{\\text{total}}\\)    = <span class="result">${f4(s.loss)}</span>\n\n`;
+
+    t += `─── What changes for backprop ───\n\n`;
+    t += `The penalty is a function of the weights, so it adds an\n`;
+    t += `extra term to every WEIGHT gradient (biases are unaffected):\n\n`;
+    t += `  \\(\\dfrac{\\partial L_{\\text{total}}}{\\partial w} = \\underbrace{\\dfrac{\\partial \\text{MSE}}{\\partial w}}_{\\text{data term (chain rule)}} + \\underbrace{2\\lambda w}_{\\text{L2 term}}\\)\n\n`;
+    t += `Derivation of the L2 term:\n`;
+    t += `  \\(\\dfrac{\\partial}{\\partial w}\\!\\left[\\lambda \\sum_k w_k^2\\right] = \\lambda \\cdot 2w = 2\\lambda w\\)\n\n`;
+    t += `So in the next 4 steps, every \\(\\partial L / \\partial W\\)\n`;
+    t += `gets a small "pull toward zero" added on top of the\n`;
+    t += `data gradient. The bigger the weight, the stronger\n`;
+    t += `the pull.`;
+    return t;
+  })(),
+  explain: `<p><strong>Why add a penalty?</strong> With only MSE, the network is allowed to grow weights as large as it needs to fit the training data perfectly — which usually means it <em>memorizes</em> the training set and generalizes poorly. <strong>L2 regularization</strong> (also called <em>weight decay</em> or <em>ridge</em> regression in the linear-model world) adds a soft constraint that says "small weights are preferred unless they really earn their keep."</p>
+<p><strong>Two competing forces:</strong> The MSE term pulls weights toward values that fit the data. The L2 term pulls all weights toward zero. At the optimum, every weight settles where the two forces balance — large enough to help with prediction, small enough that the extra fit doesn't outweigh the penalty.</p>
+<p><strong>For statisticians:</strong> This is exactly ridge regression's penalty, applied layer by layer. \\(\\lambda\\) plays the same role as the ridge tuning parameter — bigger \\(\\lambda\\) = more shrinkage = simpler (lower-variance, higher-bias) model.</p>
+<p><strong>For data analysts:</strong> Think of \\(\\lambda\\) as a complexity tax. Each weight costs \\(\\lambda w^2\\) "complexity dollars." A weight only stays large if it buys more loss reduction than it costs.</p>
+<p><strong>The choice of \\(\\lambda\\):</strong> Too small → no regularization, network may overfit. Too large → all weights shrink to zero, network can't learn. Typical values: <code>1e-4</code> to <code>1e-2</code>. We're using \\(\\lambda = ${s.lambda}\\) here for visual clarity in the calc above.</p>
+<p><strong>Why only weights?</strong> Biases shift the function up or down without changing its shape or capacity to overfit. Penalizing them would just impose an arbitrary preference for outputs near zero — usually not what you want. Standard practice in PyTorch, TensorFlow, and most textbooks is to regularize weights only.</p>
+<div class="key-insight"><strong>One line of code, big consequence:</strong> The next 4 backward steps look exactly the same as without L2 — they compute \\(\\partial \\text{MSE}/\\partial w\\) via chain rule — <em>except every weight gradient gets a \\(+2\\lambda w\\) term tacked on at the end</em>. Watch for it: each weight gradient panel will now show the data part, the L2 part, and the combined total used for the update.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+    // Highlight all weights with the penalty colour
+    for (let i = 0; i < 3; i++) {
+      activateEdge(0, 0, i, 'flow-fwd');
+      activateEdge(2, i, 0, 'flow-fwd');
+      for (let j = 0; j < 3; j++) activateEdge(1, i, j, 'flow-fwd');
+    }
+    getEl('e-loss').className.baseVal = 'edge flow-fwd';
+    getEl('c-loss').setAttribute('stroke', 'var(--red)');
+    getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+    getEl('lbl-loss').textContent = 'L_total';
     getEl('val-loss').textContent = f4(s.loss);
   }
 },
@@ -1469,8 +1578,8 @@ THE END RESULT:
 // ── Backprop Output Layer ──
 {
   phase: 'backward', title: 'Backprop: Output Layer (Dense 3)',
-  formula: String.raw`$$\frac{\partial L}{\partial W^{[3]}_i} = a^{[2]}_i \cdot \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial b^{[3]}} = \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial a^{[2]}_i} = W^{[3]}_i \cdot \frac{\partial L}{\partial \hat{y}}`,
-  formulaCaption: '<strong>What it does:</strong> Computes gradients for the output layer\'s 3 weights and 1 bias, then passes a gradient back to Layer 2 so it can do the same.',
+  formula: String.raw`$$\frac{\partial L}{\partial W^{[3]}_i} = \underbrace{a^{[2]}_i \cdot \frac{\partial L}{\partial \hat{y}}}_{\text{data}} + \underbrace{2\lambda W^{[3]}_i}_{\text{L2}} \quad\quad \frac{\partial L}{\partial b^{[3]}} = \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial a^{[2]}_i} = W^{[3]}_i \cdot \frac{\partial L}{\partial \hat{y}}`,
+  formulaCaption: '<strong>What it does:</strong> Computes gradients for the output layer\'s 3 weights (data + L2 penalty) and 1 bias (no L2), then passes a gradient back to Layer 2 so it can do the same.',
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 2 activations (a^[2]_i)</div>
     <div class="ref-value">\\(a^{[2]}_1\\) = ${fc(s.A2[0])}\n\\(a^{[2]}_2\\) = ${fc(s.A2[1])}\n\\(a^{[2]}_3\\) = ${fc(s.A2[2])}</div>
@@ -1512,10 +1621,19 @@ THE END RESULT:
       const tag = aliveA ? '✓ ALIVE' : '✗ DEAD (killed by ReLU — w gradient = 0)';
       t += `  <span class="${cls}">\\(a^{[2]}_${i+1}\\) = ${fc(s.A2[i])}  ${tag}</span>\n`;
     }
-    t += `\nWeight gradients (\\(\\partial L / \\partial W^{[3]}_i = a^{[2]}_i \\cdot \\partial L / \\partial \\hat{y}\\)):\n`;
+    t += `\nWeight gradients — data part (\\(a^{[2]}_i \\cdot \\partial L / \\partial \\hat{y}\\)):\n`;
     for (let i = 0; i < 3; i++) {
       const cls = s.A2[i] > 0 ? 'alive' : 'dead';
-      t += `  <span class="${cls}">\\(\\partial L / \\partial W^{[3]}_${i+1}\\) = ${fc(s.A2[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dW3[i])}</span></span>\n`;
+      t += `  <span class="${cls}">data\\(_${i+1}\\) = ${fc(s.A2[i])} × ${fc(s.dLdy)} = ${fc(s.dW3data[i])}</span>\n`;
+    }
+    t += `\nL2 penalty part (\\(2\\lambda W^{[3]}_i\\), with \\(\\lambda\\) = ${s.lambda}):\n`;
+    for (let i = 0; i < 3; i++) {
+      t += `  L2\\(_${i+1}\\) = 2 × ${s.lambda} × ${fw(W3[i])} = ${fc(s.dW3L2[i])}\n`;
+    }
+    t += `\nTotal weight gradients (data + L2):\n`;
+    for (let i = 0; i < 3; i++) {
+      const cls = s.A2[i] > 0 ? 'alive' : 'dead';
+      t += `  <span class="${cls}">\\(\\partial L / \\partial W^{[3]}_${i+1}\\) = ${fc(s.dW3data[i])} + ${fc(s.dW3L2[i])} = <span class="result">${fc(s.dW3[i])}</span></span>\n`;
     }
     t += `\nBias gradient (\\(\\partial L / \\partial b^{[3]} = \\partial L / \\partial \\hat{y}\\) — bias coefficient is 1):\n`;
     t += `  \\(\\partial L / \\partial b^{[3]}\\) = <span class="result">${fc(s.db3g)}</span>\n`;
@@ -1545,8 +1663,8 @@ THE END RESULT:
 // ── Backprop ReLU 2 + Dense 2 ──
 {
   phase: 'backward', title: 'Backprop: Through ReLU 2 & Dense Layer 2',
-  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[2]}_j} = \tfrac{\partial L}{\partial a^{[2]}_j} \cdot \mathbb{1}\!\left[z^{[2]}_j > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[2]}_{ij}} = a^{[1]}_i \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[2]}_j} = \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Input:}\quad & \tfrac{\partial L}{\partial a^{[1]}_i} = \textstyle\sum_j W^{[2]}_{ij} \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \end{aligned}`,
-  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 2 (dead neurons block flow), then produces gradients for Layer 2\'s 9 weights + 3 biases, and passes a gradient back to Layer 1.',
+  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[2]}_j} = \tfrac{\partial L}{\partial a^{[2]}_j} \cdot \mathbb{1}\!\left[z^{[2]}_j > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[2]}_{ij}} = \underbrace{a^{[1]}_i \cdot \tfrac{\partial L}{\partial z^{[2]}_j}}_{\text{data}} + \underbrace{2\lambda W^{[2]}_{ij}}_{\text{L2}} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[2]}_j} = \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Input:}\quad & \tfrac{\partial L}{\partial a^{[1]}_i} = \textstyle\sum_j W^{[2]}_{ij} \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \end{aligned}`,
+  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 2 (dead neurons block flow), then produces gradients for Layer 2\'s 9 weights (data + L2) + 3 biases (no L2), and passes a gradient back to Layer 1.',
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 2 pre-activations (z^[2])</div>
     <div class="ref-value">\\(z^{[2]}_1\\) = ${fc(s.Z2[0])}\n\\(z^{[2]}_2\\) = ${fc(s.Z2[1])}\n\\(z^{[2]}_3\\) = ${fc(s.Z2[2])}</div>
@@ -1584,17 +1702,17 @@ THE END RESULT:
       const cls = alive ? 'alive' : 'dead';
       t += `  <span class="${cls}">\\(\\partial L / \\partial z^{[2]}_${j+1}\\): z=${fc(s.Z2[j])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ2[j])}</span>\n`;
     }
-    t += `\nDense 2 weight gradients (\\(\\partial L / \\partial W^{[2]}_{ij} = a^{[1]}_i \\cdot \\partial L / \\partial z^{[2]}_j\\)):\n`;
-    t += `where \\(a^{[1]}_i\\) = activation from Layer 1 (forward pass)\n\n`;
+    t += `\nDense 2 weight gradients — full formula: \\(\\partial L / \\partial W^{[2]}_{ij} = a^{[1]}_i \\cdot \\partial L / \\partial z^{[2]}_j + 2\\lambda W^{[2]}_{ij}\\)\n`;
+    t += `where \\(a^{[1]}_i\\) = activation from Layer 1, \\(\\lambda\\) = ${s.lambda}\n\n`;
     for (let i = 0; i < 3; i++) {
       const aliveA = s.A1[i] > 0;
       const tag = aliveA
         ? `\\(a^{[1]}_${i+1}\\) = ${fc(s.A1[i])}  ✓ ALIVE`
-        : `\\(a^{[1]}_${i+1}\\) = 0.00  ✗ DEAD (killed by ReLU — all \\(W^{[2]}_{${i+1},j}\\) gradients = 0)`;
+        : `\\(a^{[1]}_${i+1}\\) = 0.00  ✗ DEAD (kills data part — only L2 term remains)`;
       const cls = aliveA ? 'alive' : 'dead';
       t += `<span class="${cls}">─── Layer 1 neuron ${i+1}:  ${tag} ───</span>\n`;
       for (let j = 0; j < 3; j++) {
-        t += `  \\(\\partial L / \\partial W^{[2]}_{${i+1}${j+1}}\\) = ${fc(s.A1[i])} × ${fc(s.dZ2[j])} = ${fc(s.dW2[i][j])}\n`;
+        t += `  \\(\\partial L / \\partial W^{[2]}_{${i+1},${j+1}}\\) = ${fc(s.A1[i])}×${fc(s.dZ2[j])} + 2×${s.lambda}×${fw(W2[i][j])}  =  ${fc(s.dW2data[i][j])} + ${fc(s.dW2L2[i][j])} = <span class="result">${fc(s.dW2[i][j])}</span>\n`;
       }
       t += `\n`;
     }
@@ -1639,8 +1757,8 @@ THE END RESULT:
 // ── Backprop ReLU 1 + Dense 1 ──
 {
   phase: 'backward', title: 'Backprop: Through ReLU 1 & Dense Layer 1',
-  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[1]}_i} = \tfrac{\partial L}{\partial a^{[1]}_i} \cdot \mathbb{1}\!\left[z^{[1]}_i > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[1]}_i} = x \cdot \tfrac{\partial L}{\partial z^{[1]}_i} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[1]}_i} = \tfrac{\partial L}{\partial z^{[1]}_i} \end{aligned}`,
-  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 1, then produces the final 6 parameter gradients (Layer 1\'s 3 weights + 3 biases). All 22 gradients are now ready for the update step.',
+  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[1]}_i} = \tfrac{\partial L}{\partial a^{[1]}_i} \cdot \mathbb{1}\!\left[z^{[1]}_i > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[1]}_i} = \underbrace{x \cdot \tfrac{\partial L}{\partial z^{[1]}_i}}_{\text{data}} + \underbrace{2\lambda W^{[1]}_i}_{\text{L2}} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[1]}_i} = \tfrac{\partial L}{\partial z^{[1]}_i} \end{aligned}`,
+  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 1, then produces the final 6 parameter gradients (Layer 1\'s 3 weights — data + L2 — and 3 biases). All 22 gradients are now ready for the update step.',
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 1 pre-activations (z^[1])</div>
     <div class="ref-value">\\(z^{[1]}_1\\) = ${fc(s.Z1[0])}\n\\(z^{[1]}_2\\) = ${fc(s.Z1[1])}\n\\(z^{[1]}_3\\) = ${fc(s.Z1[2])}</div>
@@ -1677,9 +1795,10 @@ THE END RESULT:
       const cls = alive ? 'alive' : 'dead';
       t += `  <span class="${cls}">\\(\\partial L / \\partial z^{[1]}_${i+1}\\): z=${fc(s.Z1[i])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ1[i])}</span>\n`;
     }
-    t += `\nDense 1 weight gradients (\\(\\partial L / \\partial W^{[1]}_i = x \\cdot \\partial L / \\partial z^{[1]}_i\\)):\n`;
+    t += `\nDense 1 weight gradients — full formula: \\(\\partial L / \\partial W^{[1]}_i = x \\cdot \\partial L / \\partial z^{[1]}_i + 2\\lambda W^{[1]}_i\\)\n`;
+    t += `(\\(\\lambda\\) = ${s.lambda})\n\n`;
     for (let i = 0; i < 3; i++)
-      t += `  \\(\\partial L / \\partial W^{[1]}_${i+1}\\) = ${fw(s.x)} × ${fc(s.dZ1[i])} = <span class="result">${fc(s.dW1g[i])}</span>\n`;
+      t += `  \\(\\partial L / \\partial W^{[1]}_${i+1}\\) = ${fw(s.x)}×${fc(s.dZ1[i])} + 2×${s.lambda}×${fw(W1[i])}  =  ${fc(s.dW1data[i])} + ${fc(s.dW1L2[i])} = <span class="result">${fc(s.dW1g[i])}</span>\n`;
     t += `\nDense 1 bias gradients (\\(\\partial L / \\partial b^{[1]}_i = \\partial L / \\partial z^{[1]}_i\\)):\n`;
     for (let i = 0; i < 3; i++)
       t += `  \\(\\partial L / \\partial b^{[1]}_${i+1}\\) = <span class="result">${fc(s.db1g[i])}</span>\n`;
@@ -1900,9 +2019,9 @@ const PHASES = [
   { label: 'Intro', ids: [0], cls: 'intro' },
   { label: 'Data Prep', ids: [1], cls: 'data' },
   { label: 'Forward Propagation', ids: [2,3,4,5,6,7,8], cls: 'forward' },
-  { label: 'Loss', ids: [9], cls: 'loss' },
-  { label: 'Backward Propagation', ids: [10,11,12,13,14], cls: 'backward' },
-  { label: 'Update Weights', ids: [15], cls: 'update' },
+  { label: 'Loss', ids: [9, 10], cls: 'loss' },
+  { label: 'Backward Propagation', ids: [11,12,13,14,15], cls: 'backward' },
+  { label: 'Update Weights', ids: [16], cls: 'update' },
 ];
 
 function buildStepBar() {
