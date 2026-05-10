@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Network Regression — Interactive Explorer (Sidebar)</title>
+<style>
+:root {
+  --blue: #3b82f6; --blue-light: #dbeafe; --blue-dark: #1d4ed8;
+  --orange: #f97316; --orange-light: #ffedd5;
+  --green: #22c55e; --green-light: #dcfce7;
+  --red: #ef4444; --red-light: #fee2e2;
+  --purple: #8b5cf6; --purple-light: #ede9fe;
+  --gray: #6b7280; --gray-light: #f3f4f6; --gray-dark: #374151;
+  --text: #1f2937; --bg: #ffffff; --card-bg: #f9fafb;
+  --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text); background: var(--bg);
+  min-height: 100vh; overflow-x: hidden;
+}
+/* === APP LAYOUT (sidebar + main) === */
+.app {
+  display: grid; grid-template-columns: 260px 1fr;
+  min-height: 100vh; max-width: 1500px; margin: 0 auto;
+  background: white;
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .sidebar.open { display: block; position: fixed; top: 0; left: 0; bottom: 0; width: 280px; z-index: 100; box-shadow: 0 0 30px rgba(0,0,0,.2); }
+  .mobile-menu-btn { display: flex !important; }
+}
+.main { padding: 20px 28px; min-width: 0; }
+
+/* === SIDEBAR === */
+.sidebar {
+  background: #fafbfc; border-right: 1px solid #e5e7eb;
+  padding: 18px 0; overflow-y: auto;
+  position: sticky; top: 0; height: 100vh;
+}
+.sidebar-header {
+  padding: 0 18px 16px; border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidebar-header h2 {
+  font-size: .95rem; font-weight: 700; line-height: 1.3;
+}
+.sidebar-header p {
+  font-size: .72rem; color: var(--gray); margin-top: 4px; line-height: 1.4;
+}
+.sidebar-progress {
+  margin-top: 10px; font-size: .7rem; color: var(--gray);
+}
+.sidebar-progress-bar {
+  height: 4px; background: #e5e7eb; border-radius: 2px;
+  margin-top: 4px; overflow: hidden;
+}
+.sidebar-progress-fill {
+  height: 100%; background: var(--blue); border-radius: 2px;
+  transition: width .3s;
+}
+.phase-group {
+  margin-bottom: 2px;
+}
+.phase-group-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 18px; cursor: pointer;
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--gray-dark); font-weight: 700;
+  user-select: none; transition: background .15s;
+}
+.phase-group-header:hover { background: rgba(0,0,0,.03); }
+.phase-group-header .chevron {
+  font-size: .55rem; transition: transform .2s; color: var(--gray);
+}
+.phase-group.expanded .phase-group-header .chevron {
+  transform: rotate(90deg);
+}
+.phase-group-header .phase-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.phase-group-header .phase-dot.intro { background: var(--green); }
+.phase-group-header .phase-dot.data { background: #0d9488; }
+.phase-group-header .phase-dot.forward { background: var(--blue); }
+.phase-group-header .phase-dot.loss { background: var(--red); }
+.phase-group-header .phase-dot.backward { background: var(--orange); }
+.phase-group-header .phase-dot.update { background: var(--purple); }
+.phase-group-header .phase-count {
+  margin-left: auto; font-size: .65rem;
+  color: var(--gray); font-weight: 600;
+}
+.step-list {
+  display: none;
+}
+.phase-group.expanded .step-list { display: block; }
+.step-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 18px 7px 36px; font-size: .82rem;
+  color: var(--text); cursor: pointer; border-left: 3px solid transparent;
+  transition: all .15s; line-height: 1.3;
+}
+.step-item:hover { background: #eef2ff; }
+.step-item .marker {
+  width: 14px; flex-shrink: 0; text-align: center;
+  font-size: .72rem; font-weight: 700;
+}
+.step-item.completed .marker { color: var(--green); }
+.step-item.completed .marker::before { content: "✓"; }
+.step-item.upcoming { color: var(--gray); }
+.step-item.upcoming .marker { color: #d1d5db; }
+.step-item.upcoming .marker::before { content: "○"; }
+.step-item.current {
+  background: #e0e7ff; color: var(--blue-dark); font-weight: 600;
+  border-left-color: var(--blue);
+}
+.step-item.current .marker { color: var(--blue); }
+.step-item.current .marker::before { content: "▸"; }
+.step-item.current.intro { background: var(--green-light); color: #166534; border-left-color: var(--green); }
+.step-item.current.intro .marker { color: var(--green); }
+.step-item.current.data { background: #ccfbf1; color: #134e4a; border-left-color: #0d9488; }
+.step-item.current.data .marker { color: #0d9488; }
+.step-item.current.loss { background: var(--red-light); color: #991b1b; border-left-color: var(--red); }
+.step-item.current.loss .marker { color: var(--red); }
+.step-item.current.backward { background: var(--orange-light); color: #9a3412; border-left-color: var(--orange); }
+.step-item.current.backward .marker { color: var(--orange); }
+.step-item.current.update { background: var(--purple-light); color: #5b21b6; border-left-color: var(--purple); }
+.step-item.current.update .marker { color: var(--purple); }
+
+/* Mobile menu button */
+.mobile-menu-btn {
+  display: none; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid #d1d5db; background: white;
+  border-radius: 8px; font-size: .8rem; font-weight: 600; cursor: pointer;
+  margin-bottom: 12px; color: var(--text);
+}
+.sidebar-close {
+  display: none; position: absolute; top: 8px; right: 12px;
+  border: 0; background: transparent; font-size: 1.4rem; cursor: pointer;
+  color: var(--gray);
+}
+.sidebar.open .sidebar-close { display: block; }
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  z-index: 99;
+}
+.sidebar-overlay.show { display: block; }
+
+/* === MAIN HEADER === */
+header { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
+header h1 { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
+
+/* === STEP TITLE === */
+.step-title {
+  text-align: center; padding: 6px 16px; margin-bottom: 10px;
+  font-size: 1.1rem; font-weight: 600;
+}
+.step-title .phase-tag {
+  display: inline-block; padding: 2px 10px; border-radius: 12px;
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; margin-right: 8px; vertical-align: middle;
+}
+.phase-tag.intro { background: var(--green-light); color: #16a34a; }
+.phase-tag.data { background: #ccfbf1; color: #0d9488; }
+.phase-tag.forward { background: var(--blue-light); color: var(--blue-dark); }
+.phase-tag.loss { background: var(--red-light); color: var(--red); }
+.phase-tag.backward { background: var(--orange-light); color: var(--orange); }
+.phase-tag.update { background: var(--purple-light); color: var(--purple); }
+
+/* === NETWORK SVG === */
+.network-wrap {
+  background: var(--card-bg); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 10px; margin-bottom: 12px;
+  overflow: hidden;
+}
+#network-svg { width: 100%; height: auto; display: block; }
+
+.edge { stroke: #d1d5db; stroke-width: 1.5; fill: none; transition: all .3s; }
+.edge.active-fwd { stroke: var(--blue); stroke-width: 2.5; }
+.edge.active-bwd { stroke: var(--orange); stroke-width: 2.5; stroke-dasharray: 8 5; }
+.edge.active-update { stroke: var(--purple); stroke-width: 2.5; }
+.edge.dimmed { stroke: #e5e7eb; stroke-width: 1; }
+.edge.dead { stroke: var(--red); stroke-width: 1.5; stroke-dasharray: 4 4; opacity: 0.65; }
+
+.node-circle {
+  fill: white; stroke: #9ca3af; stroke-width: 2.5;
+  transition: stroke .3s, fill .3s; cursor: grab;
+}
+.node-circle:active, .draggable-node.dragging .node-circle { cursor: grabbing; }
+.draggable-node:hover .node-circle { stroke-width: 3.5; }
+.node-circle.active { stroke-width: 3; }
+.node-circle.active-fwd { stroke: var(--blue); fill: var(--blue-light); }
+.node-circle.active-relu-alive { stroke: var(--green); fill: var(--green-light); }
+.node-circle.active-relu-dead { stroke: var(--red); fill: var(--red-light); }
+.node-circle.active-loss { stroke: var(--red); fill: var(--red-light); }
+.node-circle.active-bwd { stroke: var(--orange); fill: var(--orange-light); }
+.node-circle.active-update { stroke: var(--purple); fill: var(--purple-light); }
+.node-circle.dimmed { stroke: #e5e7eb; fill: #fafafa; }
+
+.node-label {
+  font-size: 11px; font-weight: 600; fill: var(--text);
+  text-anchor: middle; dominant-baseline: central; pointer-events: none;
+}
+.node-value {
+  font-size: 10px; font-family: "Consolas","Fira Code",monospace;
+  fill: var(--gray-dark); text-anchor: middle; pointer-events: none;
+}
+.weight-label {
+  font-size: 8px; font-family: "Consolas",monospace;
+  fill: var(--gray); text-anchor: middle; dominant-baseline: central;
+  pointer-events: none; transition: all .3s;
+}
+.weight-label.active { fill: var(--text); font-size: 9px; font-weight: 600; }
+.layer-title {
+  font-size: 11px; font-weight: 700; fill: var(--gray);
+  text-anchor: middle; text-transform: uppercase; letter-spacing: .04em;
+}
+
+/* flow animation */
+@keyframes dash-forward { to { stroke-dashoffset: -26; } }
+@keyframes dash-backward { to { stroke-dashoffset: 26; } }
+.edge.flow-fwd {
+  stroke: var(--blue); stroke-width: 2.5;
+  stroke-dasharray: 12 14; animation: dash-forward .7s linear infinite;
+}
+.edge.flow-bwd {
+  stroke: var(--orange); stroke-width: 2.5;
+  stroke-dasharray: 12 14; animation: dash-backward .7s linear infinite;
+}
+
+/* === INFO PANELS === */
+.info-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 12px;
+}
+.info-grid.with-ref { grid-template-columns: 0.85fr 1.1fr 1.1fr; }
+@media (max-width: 700px) {
+  .info-grid { grid-template-columns: 1fr; }
+  .info-grid.with-ref { grid-template-columns: 1fr; }
+}
+.card-ref {
+  border-left: 3px solid var(--orange);
+  display: none;
+}
+.info-grid.with-ref .card-ref { display: block; }
+.ref-section { margin-bottom: 10px; }
+.ref-label {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--gray); font-weight: 700; margin-bottom: 3px;
+}
+.ref-value {
+  font-family: "Consolas","Fira Code",monospace; font-size: .76rem;
+  color: var(--text); background: #fff7ed;
+  padding: 6px 8px; border-radius: 4px; white-space: pre-wrap;
+  line-height: 1.5;
+}
+.ref-source {
+  font-size: .68rem; color: var(--gray); font-style: italic;
+  margin-top: 2px;
+}
+
+.card {
+  background: var(--card-bg); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 14px 16px;
+}
+.card h3 {
+  font-size: .75rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--gray); margin-bottom: 8px; font-weight: 700;
+}
+.card-formula {
+  border-left: 3px solid var(--blue);
+}
+.card-formula.intro { border-left-color: var(--green); }
+.card-formula.data { border-left-color: #0d9488; }
+.card-formula.loss { border-left-color: var(--red); }
+.card-formula.backward { border-left-color: var(--orange); }
+.card-formula.update { border-left-color: var(--purple); }
+.formula-box {
+  background: #f0f4ff; border-radius: 6px; padding: 8px 12px;
+  font-family: "Consolas","Fira Code",monospace; font-size: .85rem;
+  margin-bottom: 8px; line-height: 1.6; color: var(--blue-dark);
+}
+.formula-box.intro { background: #f0fdf4; color: #166534; }
+.formula-box.data { background: #f0fdfa; color: #134e4a; }
+.formula-box.loss { background: #fef2f2; color: #991b1b; }
+.formula-box.backward { background: #fff7ed; color: #9a3412; }
+.formula-box.update { background: #f5f3ff; color: #5b21b6; }
+.calc-block {
+  font-family: "Consolas","Fira Code",monospace; font-size: .78rem;
+  line-height: 1.7; white-space: pre-wrap; color: var(--text);
+}
+.calc-block .result { font-weight: 700; }
+.calc-block .dead { color: var(--red); }
+.calc-block .alive { color: var(--green); }
+.calc-block .row-highlight { background: var(--blue-light); color: var(--blue-dark); font-weight: 700; display: inline-block; width: 100%; border-radius: 4px; padding: 1px 0; }
+
+.card-explain p {
+  font-size: .85rem; line-height: 1.6; margin-bottom: 8px; color: #374151;
+}
+.card-explain .key-insight {
+  background: #fffbeb; border-left: 3px solid #f59e0b; padding: 8px 12px;
+  border-radius: 0 6px 6px 0; font-size: .82rem; margin-top: 4px;
+}
+
+/* === CONTROLS === */
+.controls {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; padding: 8px 0;
+}
+.slider-group { display: flex; align-items: center; gap: 8px; }
+.slider-group label { font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.slider-group input[type=range] { width: 140px; accent-color: var(--blue); }
+.slider-group .val {
+  font-family: "Consolas",monospace; font-size: .82rem; min-width: 40px;
+}
+.nav-group { display: flex; align-items: center; gap: 8px; }
+.btn {
+  padding: 6px 16px; border-radius: 6px; border: 1px solid #d1d5db;
+  background: white; font-size: .82rem; font-weight: 600; cursor: pointer;
+  transition: all .15s;
+}
+.btn:hover { background: var(--gray-light); }
+.btn:active { transform: scale(.97); }
+.btn.primary { background: var(--blue); color: white; border-color: var(--blue-dark); }
+.btn.primary:hover { background: var(--blue-dark); }
+.step-counter { font-size: .8rem; color: var(--gray); min-width: 90px; text-align: center; }
+.kbd { font-size: .65rem; color: #9ca3af; }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close" id="sidebar-close" aria-label="Close menu">&times;</button>
+    <div class="sidebar-header">
+      <h2>Neural Network Regression</h2>
+      <p>Interactive Explorer — 16 step walkthrough</p>
+      <div class="sidebar-progress">
+        <div><strong id="sidebar-progress-text">Step 1 of 16</strong></div>
+        <div class="sidebar-progress-bar"><div class="sidebar-progress-fill" id="sidebar-progress-fill"></div></div>
+      </div>
+    </div>
+    <nav id="step-bar"></nav>
+  </aside>
+
+  <main class="main">
+    <button class="mobile-menu-btn" id="mobile-menu-btn">☰ Steps</button>
+    <header>
+      <h1>Neural Network Regression &mdash; Interactive Explorer</h1>
+      <p>Step through a full forward pass, loss, backpropagation, and weight update</p>
+    </header>
+
+    <div class="step-title" id="step-title"></div>
+
+  <div class="network-wrap" id="mountain-wrap" style="display:none;">
+    <svg id="mountain-svg" viewBox="0 0 880 400" style="width:100%;height:auto;">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#e0e7ff"/>
+          <stop offset="100%" stop-color="#f8fafc"/>
+        </linearGradient>
+        <linearGradient id="mtnGrad1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#6b7280"/>
+          <stop offset="100%" stop-color="#9ca3af"/>
+        </linearGradient>
+        <linearGradient id="mtnGrad2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#4b5563"/>
+          <stop offset="100%" stop-color="#6b7280"/>
+        </linearGradient>
+        <radialGradient id="fogGrad" cx="50%" cy="40%" r="60%">
+          <stop offset="0%" stop-color="white" stop-opacity="0.0"/>
+          <stop offset="50%" stop-color="white" stop-opacity="0.4"/>
+          <stop offset="100%" stop-color="white" stop-opacity="0.85"/>
+        </radialGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="3" result="g"/>
+          <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <defs><marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10Z" fill="#ef4444"/></marker></defs>
+      <!-- Sky -->
+      <rect x="0" y="0" width="880" height="400" fill="url(#skyGrad)"/>
+      <!-- Background mountains -->
+      <path d="M0,320 L80,200 L160,260 L260,140 L340,220 L400,180 L500,100 L580,170 L660,130 L740,190 L820,160 L880,220 L880,400 L0,400Z" fill="url(#mtnGrad1)" opacity="0.5"/>
+      <!-- Main mountain range -->
+      <path d="M0,350 L60,280 L130,310 L200,220 L270,280 L330,250 L400,160 L440,200 L490,310 L530,290 L570,320 L610,260 L680,170 L720,230 L780,190 L830,260 L880,300 L880,400 L0,400Z" fill="url(#mtnGrad2)"/>
+      <!-- Fog overlay (drawn over mountains, BEFORE labels so labels stay vibrant) -->
+      <rect x="0" y="0" width="880" height="400" fill="url(#fogGrad)" pointer-events="none"/>
+
+      <!-- Valley floor line (global minimum) -->
+      <line x1="460" y1="318" x2="520" y2="318" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 3"/>
+      <text x="490" y="340" text-anchor="middle" font-size="11" fill="#15803d" font-weight="700">Global Minimum</text>
+      <text x="490" y="354" text-anchor="middle" font-size="9" fill="#15803d" font-weight="700">(Best possible answer)</text>
+      <!-- Local minimum label -->
+      <line x1="245" y1="283" x2="295" y2="283" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 3"/>
+      <text x="270" y="300" text-anchor="middle" font-size="11" fill="#c2410c" font-weight="700">Local Minimum</text>
+      <text x="270" y="314" text-anchor="middle" font-size="9" fill="#c2410c" font-weight="700">(Good, not the best)</text>
+      <!-- Hiker dot at the top -->
+      <circle cx="400" cy="155" r="10" fill="#ef4444" stroke="white" stroke-width="2.5" filter="url(#glow)"/>
+      <text x="400" y="142" text-anchor="middle" font-size="11" fill="#dc2626" font-weight="700">You are here</text>
+      <!-- Step arrow going downhill -->
+      <path d="M408,162 Q430,195 438,198" stroke="#ef4444" stroke-width="2" fill="none" marker-end="url(#arrowRed)"/>
+      <text x="448" y="190" font-size="10" fill="#dc2626" font-weight="700">Step downhill</text>
+      <text x="448" y="202" font-size="9" fill="#dc2626" font-weight="700">(learning rate = step size)</text>
+      <!-- Gradient/slope indicator -->
+      <line x1="375" y1="168" x2="395" y2="155" stroke="#7c3aed" stroke-width="2.5"/>
+      <text x="350" y="180" text-anchor="middle" font-size="10" fill="#6d28d9" font-weight="700">Slope</text>
+      <text x="350" y="192" text-anchor="middle" font-size="9" fill="#6d28d9" font-weight="700">(gradient)</text>
+      <!-- Fog label -->
+      <text x="140" y="100" font-size="20" fill="#4b5563" font-weight="700">F O G</text>
+      <text x="140" y="118" font-size="11" fill="#4b5563" font-weight="700">You can't see the full landscape</text>
+      <text x="700" y="95" font-size="13" fill="#374151" font-weight="700">But you CAN feel</text>
+      <text x="700" y="112" font-size="13" fill="#374151" font-weight="700">the slope under</text>
+      <text x="700" y="129" font-size="13" fill="#374151" font-weight="700">your feet</text>
+      <!-- Loss = Altitude label -->
+      <line x1="60" y1="160" x2="60" y2="310" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="55" y="240" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="700" transform="rotate(-90,55,240)">Loss = Altitude</text>
+    </svg>
+  </div>
+
+  <div class="network-wrap" id="network-wrap">
+    <svg id="network-svg" viewBox="0 0 1200 520" style="touch-action: none;"></svg>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;font-size:.72rem;color:var(--gray);">
+      <span>💡 <strong>Tip:</strong> Click and drag any neuron to reposition it (helps if labels overlap)</span>
+      <button id="reset-layout-btn" type="button" style="font-size:.7rem;padding:3px 10px;border:1px solid #d1d5db;background:white;border-radius:4px;cursor:pointer;color:var(--gray-dark);">Reset Layout</button>
+    </div>
+  </div>
+
+  <div class="slider-group" id="slider-group" style="margin-bottom:10px;">
+    <label>Ad Spend:</label>
+    <input type="range" id="x-slider" min="-1" max="1" step="0.01" value="0.22">
+    <span class="val" id="x-val">$61k</span>
+    <span style="margin-left:8px;font-size:.8rem;color:var(--gray)">
+      Actual Revenue = <span id="y-true-val">$99k</span>
+    </span>
+  </div>
+
+  <div class="info-grid" id="info-grid">
+    <div class="card card-ref" id="ref-card">
+      <h3>From Forward Pass</h3>
+      <div id="ref-content"></div>
+    </div>
+    <div class="card card-formula" id="formula-card">
+      <h3>Formula &amp; Calculation</h3>
+      <div id="formula-box" class="formula-box"></div>
+      <div id="calc-block" class="calc-block"></div>
+    </div>
+    <div class="card card-explain" id="explain-card">
+      <h3>Explanation</h3>
+      <div id="explain-content"></div>
+    </div>
+  </div>
+
+  <div class="controls" style="justify-content:flex-end;">
+    <div class="kbd" style="margin-right:auto;">Arrow keys: &larr; &rarr; &nbsp;|&nbsp; Home / End</div>
+    <div class="nav-group">
+      <button class="btn" id="btn-prev" onclick="goStep(-1)">&laquo; Prev</button>
+      <span class="step-counter" id="step-counter">1 / 14</span>
+      <button class="btn primary" id="btn-next" onclick="goStep(1)">Next &raquo;</button>
+    </div>
+  </div>
+  </main>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// SECTION 1: NETWORK CONFIGURATION
+// ════════════════════════════════════════════════════════════════
+
+const W1 = [1.0, -1.0, 0.8];
+const b1 = [0.1, 0.2, -0.1];
+
+const W2 = [
+  [0.5, -0.3, 0.7],
+  [0.2, 0.6, -0.4],
+  [-0.6, 0.4, 0.3]
+];
+const b2 = [0.15, -0.25, 0.10];
+
+const W3 = [0.9, -0.5, 0.7];
+const b3 = -0.05;
+
+const LR = 0.1;
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 2: FORWARD + BACKWARD COMPUTATION
+// ════════════════════════════════════════════════════════════════
+
+function computeAll(x) {
+  const yTrue = Math.sin(2 * Math.PI * x);
+
+  // --- Forward ---
+  const Z1 = W1.map((w, i) => x * w + b1[i]);
+  const A1 = Z1.map(z => Math.max(0, z));
+
+  const Z2 = [0,1,2].map(j =>
+    A1[0]*W2[0][j] + A1[1]*W2[1][j] + A1[2]*W2[2][j] + b2[j]
+  );
+  const A2 = Z2.map(z => Math.max(0, z));
+
+  const Z3val = A2[0]*W3[0] + A2[1]*W3[1] + A2[2]*W3[2] + b3;
+  const yPred = Z3val;
+
+  const loss = (yTrue - yPred) ** 2;
+
+  // --- Backward ---
+  const dLdy = -2 * (yTrue - yPred);
+
+  const dW3 = A2.map(a => a * dLdy);
+  const db3g = dLdy;
+  const dA2 = W3.map(w => dLdy * w);
+
+  const dZ2 = dA2.map((d, i) => Z2[i] > 0 ? d : 0);
+
+  const dW2 = A1.map(a => dZ2.map(d => a * d));
+  const db2g = [...dZ2];
+
+  const dA1 = [0,1,2].map(j =>
+    dZ2[0]*W2[j][0] + dZ2[1]*W2[j][1] + dZ2[2]*W2[j][2]
+  );
+
+  const dZ1 = dA1.map((d, i) => Z1[i] > 0 ? d : 0);
+
+  const dW1g = dZ1.map(d => x * d);
+  const db1g = [...dZ1];
+
+  const W1n = W1.map((w, i) => w - LR * dW1g[i]);
+  const b1n = b1.map((b, i) => b - LR * db1g[i]);
+  const W2n = W2.map((row, i) => row.map((w, j) => w - LR * dW2[i][j]));
+  const b2n = b2.map((b, i) => b - LR * db2g[i]);
+  const W3n = W3.map((w, i) => w - LR * dW3[i]);
+  const b3n = b3 - LR * db3g;
+
+  return {
+    x, yTrue, Z1, A1, Z2, A2, Z3: Z3val, yPred, loss,
+    dLdy, dW3, db3g, dA2, dZ2, dW2, db2g, dA1, dZ1, dW1g, db1g,
+    W1n, b1n, W2n, b2n, W3n, b3n
+  };
+}
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 3: SVG LAYOUT
+// ════════════════════════════════════════════════════════════════
+
+const R = 26;
+// Save default layout so the Reset button can restore it
+const DEFAULT_LAYOUT = [
+  [{x:110, y:260}],
+  [{x:380, y:90},{x:380, y:260},{x:380, y:430}],
+  [{x:740, y:90},{x:740, y:260},{x:740, y:430}],
+  [{x:1000, y:260}]
+];
+const LAYERS = [
+  { id: 'input',   label: 'Input',     nodes: DEFAULT_LAYOUT[0].map(p => ({...p})) },
+  { id: 'hidden1', label: 'Hidden 1',  nodes: DEFAULT_LAYOUT[1].map(p => ({...p})) },
+  { id: 'hidden2', label: 'Hidden 2',  nodes: DEFAULT_LAYOUT[2].map(p => ({...p})) },
+  { id: 'output',  label: 'Output',    nodes: DEFAULT_LAYOUT[3].map(p => ({...p})) },
+];
+
+const LOSS_POS = { x: 1130, y: 260 };
+
+function nid(li, ni) { return `n-${li}-${ni}`; }
+function eid(li, fi, ti) { return `e-${li}-${fi}-${ti}`; }
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 4: BUILD SVG (called once)
+// ════════════════════════════════════════════════════════════════
+
+function buildSVG() {
+  const svg = document.getElementById('network-svg');
+  svg.innerHTML = '';
+
+  // layer titles
+  LAYERS.forEach(L => {
+    const cx = L.nodes[0].x;
+    const t = el('text', { x: cx, y: 22, class: 'layer-title' }, L.label);
+    svg.appendChild(t);
+  });
+  svg.appendChild(el('text', { x: LOSS_POS.x, y: 22, class: 'layer-title' }, 'Loss'));
+
+  // edges
+  for (let li = 0; li < LAYERS.length - 1; li++) {
+    const from = LAYERS[li].nodes, to = LAYERS[li+1].nodes;
+    const numFrom = from.length;
+    from.forEach((f, fi) => to.forEach((t, ti) => {
+      const line = el('line', {
+        x1: f.x + R, y1: f.y, x2: t.x - R, y2: t.y,
+        class: 'edge', id: eid(li, fi, ti)
+      });
+      svg.appendChild(line);
+
+      // Stagger weight labels along the edge based on source node index
+      // This prevents labels from clustering at the midpoint when many edges cross
+      const frac = numFrom > 1 ? (0.22 + 0.56 * fi / (numFrom - 1)) : 0.5;
+      const x1 = f.x + R, y1 = f.y, x2 = t.x - R, y2 = t.y;
+      const wlx = x1 + frac * (x2 - x1);
+      const wly = y1 + frac * (y2 - y1);
+      const wl = el('text', {
+        x: wlx, y: wly - 6, class: 'weight-label', id: 'wl-' + eid(li, fi, ti)
+      }, '');
+      svg.appendChild(wl);
+    }));
+  }
+
+  // loss connection
+  const outN = LAYERS[3].nodes[0];
+  svg.appendChild(el('line', {
+    x1: outN.x + R, y1: outN.y, x2: LOSS_POS.x - 18, y2: LOSS_POS.y,
+    class: 'edge', id: 'e-loss'
+  }));
+
+  // nodes
+  LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+    const g = el('g', {
+      id: 'g-' + nid(li, ni),
+      transform: `translate(${n.x},${n.y})`,
+      class: 'draggable-node',
+      'data-li': li, 'data-ni': ni
+    });
+    g.appendChild(el('circle', { r: R, class: 'node-circle', id: 'c-' + nid(li, ni) }));
+    g.appendChild(el('text', { y: -2, class: 'node-label', id: 'lbl-' + nid(li, ni) }, ''));
+    g.appendChild(el('text', { y: 12, class: 'node-value', id: 'val-' + nid(li, ni) }, ''));
+    g.addEventListener('mousedown', startNodeDrag);
+    g.addEventListener('touchstart', startNodeDrag, { passive: false });
+    svg.appendChild(g);
+  }));
+
+  // loss node
+  const lg = el('g', { id: 'g-loss', transform: `translate(${LOSS_POS.x},${LOSS_POS.y})` });
+  lg.appendChild(el('rect', {
+    x: -18, y: -18, width: 36, height: 36, rx: 6,
+    fill: 'white', stroke: '#9ca3af', 'stroke-width': 2.5, id: 'c-loss'
+  }));
+  lg.appendChild(el('text', { y: -2, class: 'node-label', id: 'lbl-loss' }, 'L'));
+  lg.appendChild(el('text', { y: 14, class: 'node-value', id: 'val-loss' }, ''));
+  svg.appendChild(lg);
+
+  // bias labels (small, below each node)
+  LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+    const bt = el('text', {
+      x: n.x, y: n.y + R + 14,
+      class: 'weight-label', id: 'bias-' + nid(li, ni),
+      style: 'font-size:8px'
+    }, '');
+    svg.appendChild(bt);
+  }));
+}
+
+function el(tag, attrs, text) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+// ────────────────────────────────────────────────────────────────
+// DRAG & DROP for repositioning neurons
+// ────────────────────────────────────────────────────────────────
+let dragState = null;
+
+function getSvgPoint(evt) {
+  const svg = document.getElementById('network-svg');
+  const pt = svg.createSVGPoint();
+  const e = evt.touches ? evt.touches[0] : evt;
+  pt.x = e.clientX;
+  pt.y = e.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function startNodeDrag(evt) {
+  evt.preventDefault();
+  const g = evt.currentTarget;
+  const li = parseInt(g.getAttribute('data-li'));
+  const ni = parseInt(g.getAttribute('data-ni'));
+  const node = LAYERS[li].nodes[ni];
+  const startPt = getSvgPoint(evt);
+  dragState = {
+    li, ni,
+    offsetX: node.x - startPt.x,
+    offsetY: node.y - startPt.y
+  };
+  g.classList.add('dragging');
+  document.addEventListener('mousemove', onNodeDrag);
+  document.addEventListener('mouseup', endNodeDrag);
+  document.addEventListener('touchmove', onNodeDrag, { passive: false });
+  document.addEventListener('touchend', endNodeDrag);
+}
+
+function onNodeDrag(evt) {
+  if (!dragState) return;
+  evt.preventDefault();
+  const pt = getSvgPoint(evt);
+  const newX = pt.x + dragState.offsetX;
+  const newY = pt.y + dragState.offsetY;
+  moveNode(dragState.li, dragState.ni, newX, newY);
+}
+
+function endNodeDrag() {
+  if (dragState) {
+    const g = document.getElementById('g-' + nid(dragState.li, dragState.ni));
+    if (g) g.classList.remove('dragging');
+    dragState = null;
+  }
+  document.removeEventListener('mousemove', onNodeDrag);
+  document.removeEventListener('mouseup', endNodeDrag);
+  document.removeEventListener('touchmove', onNodeDrag);
+  document.removeEventListener('touchend', endNodeDrag);
+}
+
+function moveNode(li, ni, newX, newY) {
+  // Update LAYERS data
+  LAYERS[li].nodes[ni].x = newX;
+  LAYERS[li].nodes[ni].y = newY;
+
+  // Move the node group
+  const g = document.getElementById('g-' + nid(li, ni));
+  if (g) g.setAttribute('transform', `translate(${newX},${newY})`);
+
+  // Update bias label position
+  const biasLbl = document.getElementById('bias-' + nid(li, ni));
+  if (biasLbl) {
+    biasLbl.setAttribute('x', newX);
+    biasLbl.setAttribute('y', newY + R + 14);
+  }
+
+  // Update outgoing edges + their weight labels
+  if (li < LAYERS.length - 1) {
+    LAYERS[li + 1].nodes.forEach((target, ti) => {
+      const line = document.getElementById(eid(li, ni, ti));
+      if (line) {
+        line.setAttribute('x1', newX + R);
+        line.setAttribute('y1', newY);
+      }
+      updateWeightLabel(li, ni, ti);
+    });
+  }
+
+  // Update incoming edges + their weight labels
+  if (li > 0) {
+    LAYERS[li - 1].nodes.forEach((source, fi) => {
+      const line = document.getElementById(eid(li - 1, fi, ni));
+      if (line) {
+        line.setAttribute('x2', newX - R);
+        line.setAttribute('y2', newY);
+      }
+      updateWeightLabel(li - 1, fi, ni);
+    });
+  }
+
+  // Update loss connection if dragging the output node
+  if (li === LAYERS.length - 1) {
+    const lossLine = document.getElementById('e-loss');
+    if (lossLine) {
+      lossLine.setAttribute('x1', newX + R);
+      lossLine.setAttribute('y1', newY);
+    }
+  }
+}
+
+function updateWeightLabel(li, fi, ti) {
+  const wl = document.getElementById('wl-' + eid(li, fi, ti));
+  if (!wl) return;
+  const f = LAYERS[li].nodes[fi];
+  const t = LAYERS[li + 1].nodes[ti];
+  const numFrom = LAYERS[li].nodes.length;
+  const frac = numFrom > 1 ? (0.22 + 0.56 * fi / (numFrom - 1)) : 0.5;
+  const x1 = f.x + R, y1 = f.y, x2 = t.x - R, y2 = t.y;
+  wl.setAttribute('x', x1 + frac * (x2 - x1));
+  wl.setAttribute('y', y1 + frac * (y2 - y1) - 6);
+}
+
+function resetLayout() {
+  DEFAULT_LAYOUT.forEach((layer, li) => {
+    layer.forEach((p, ni) => {
+      moveNode(li, ni, p.x, p.y);
+    });
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 5: STEP DEFINITIONS
+// ════════════════════════════════════════════════════════════════
+
+// fw = format WEIGHT/KNOWN value (2dp — these are exact constants)
+// fc = format COMPUTED value (4dp — products, sums, activations)
+function fw(v) { return v.toFixed(2); }
+function fc(v) { return v.toFixed(4); }
+function f3(v) { return v.toFixed(3); }
+function f4(v) { return v.toFixed(4); }
+function sign(v) { return v >= 0 ? '+' : ''; }
+
+function getSteps(s) {
+  return [
+
+// ── 0: Why Neural Networks? (Mountain Analogy) ──
+{
+  phase: 'intro', title: 'The Challenge: Why Neural Networks?',
+  formula: 'Goal: Find the set of weights that minimizes prediction error',
+  calc: `The Problem:\n  We have data. We want to predict outcomes.\n  But the relationship between inputs and outputs\n  is complex, nonlinear, and high-dimensional.\n\nThe Approach:\n  A neural network learns by trial and error:\n  1. Make a prediction (forward pass)\n  2. Measure how wrong it is (loss)\n  3. Figure out what to adjust (backpropagation)\n  4. Make small corrections (weight update)\n  5. Repeat thousands of times`,
+  explain: `<p><strong>Before we look at any math</strong>, let's understand what a neural network is actually trying to do -- and why it's hard.</p>
+<p>Look at the mountain landscape above. Imagine you're the <span style="color:#ef4444;font-weight:700">red dot</span>, standing on a mountain range <strong>in thick fog</strong>. Your goal: reach the lowest valley. That valley represents the <strong>best possible prediction</strong> your model can make.</p>
+<p><strong>The problem?</strong> You can't see the landscape. You don't know where the valleys are, how many there are, or how deep they go. All you can do is:</p>
+<p>1. <strong>Feel the slope under your feet</strong> <span style="color:#8b5cf6">(gradient)</span> -- is the ground tilting left, right, steep, or flat?<br>
+2. <strong>Take a step downhill</strong> <span style="color:#ef4444">(weight update)</span> -- move in the direction that goes down<br>
+3. <strong>Choose your step size</strong> (learning rate) -- too big and you leap over valleys; too small and you'll take forever</p>
+<p>You might end up in a <span style="color:#f97316;font-weight:600">local minimum</span> (a decent valley, but not the deepest one) instead of the <span style="color:#22c55e;font-weight:600">global minimum</span> (the absolute best). Because of the fog, you can never be 100% sure you found the best answer -- but in practice, a good valley is usually good enough.</p>
+<div class="key-insight"><strong>That's what the next steps will show you.</strong> We'll walk through every step of how a neural network makes a prediction (walks forward), measures its error (checks altitude), figures out which direction is downhill for each weight (backpropagation), and takes one step (weight update). By the end, you'll see exactly how the network learns -- one small step at a time.</div>`,
+  render(s) {
+    dimAll();
+  }
+},
+
+// ── 1: Data Preparation ──
+{
+  phase: 'data', title: 'Data Preparation: Standardization',
+  formula: `StandardScaler:  x_scaled = (value − mean) / std_dev`,
+  calc: (() => {
+    const xv = parseFloat(fw(s.x));
+    const contextVals = [-0.84, -0.54, 0.34, 0.82];
+    const months = ['Jan','Apr','Aug','Nov'];
+    let t = `RAW dataset (before scaling):\n\n`;
+    t += `  Row  |  Month   | Ad Spend  | Revenue\n`;
+    t += `  ─────┼──────────┼───────────┼──────────\n`;
+    for (let i = 0; i < 2; i++) {
+      const rx = contextVals[i];
+      const rawSpend = '$'+(rx*50+50).toFixed(0)+'k';
+      const rev = '$'+(Math.sin(2*Math.PI*rx)*50+50).toFixed(0)+'k';
+      t += `    ${i+1}  |  ${months[i]}      | ${rawSpend.padStart(7)}   | ${rev.padStart(6)}\n`;
+    }
+    const curRev = (s.yTrue*50+50).toFixed(0);
+    const rawCur = '$'+(xv*50+50).toFixed(0)+'k';
+    const curRow = `  ► 3  |  CURRENT  | ${rawCur.padStart(7)}   | ${'$'+curRev+'k'}`;
+    t += `<span class="row-highlight">${curRow}</span>\n`;
+    for (let i = 2; i < 4; i++) {
+      const rx = contextVals[i];
+      const rawSpend = '$'+(rx*50+50).toFixed(0)+'k';
+      const rev = '$'+(Math.sin(2*Math.PI*rx)*50+50).toFixed(0)+'k';
+      t += `    ${i+2}  |  ${months[i]}      | ${rawSpend.padStart(7)}   | ${rev.padStart(6)}\n`;
+    }
+    t += `\n  ► Highlighted row = your current Ad Spend value\n\n`;
+    t += `  ─── Applying StandardScaler to both columns ───\n`;
+    t += `  Formula: x_scaled = (value - mean) / std_dev\n\n`;
+    t += `  Ad Spend:  mean = $50k,  std_dev = $50k\n`;
+    t += `    ${rawCur} → (${(xv*50+50).toFixed(0)} − 50) / 50 = ${fw(s.x)}\n\n`;
+    t += `  Revenue:   mean = $50k,  std_dev = $50k\n`;
+    t += `    $${curRev}k → (${curRev} − 50) / 50 = ${f4(s.yTrue)}\n\n`;
+    t += `  ─── Scaled data (ready for the network) ───\n`;
+    t += `    x = ${fw(s.x)}       y_true = ${f4(s.yTrue)}`;
+    return t;
+  })(),
+  explain: `<p><strong>Before training a neural network, we must scale the raw data.</strong> This is called <strong>data preprocessing</strong> — and skipping it is one of the most common beginner mistakes in machine learning.</p>
+<p><strong>Why can't we use raw dollar values?</strong> Imagine feeding $50,000 into a network with tiny weights near 0.5. The weighted sum would be 25,000 — enormously large. Gradients would explode, the network would overshoot wildly, and it would never converge. We need small, uniform numbers.</p>
+<p><strong>StandardScaler</strong> (z-score standardization) is the most common scaling technique in practice. It transforms each feature using:<br><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">x_scaled = (value − mean) / std_dev</code></p>
+<p>This <strong>centers data around 0</strong> (the mean becomes 0) and scales it so most values fall between <strong>−1 and 1</strong>. The result: every feature is on the same playing field, gradients stay small and stable, and the network can learn efficiently.</p>
+<p><strong>In our example:</strong> Ad Spend = $${(s.x*50+50).toFixed(0)}k becomes x = ${fw(s.x)}, and Revenue = $${(s.yTrue*50+50).toFixed(0)}k becomes y_true = ${f4(s.yTrue)}. These small numbers are what the network actually trains on.</p>
+<p><strong>After training</strong>, we reverse the transformation to convert predictions back to real dollars: <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">revenue = ŷ × std_dev + mean</code></p>
+<div class="key-insight"><strong>In scikit-learn, this is one line:</strong> <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">from sklearn.preprocessing import StandardScaler</code><br><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">X_scaled = StandardScaler().fit_transform(X)</code><br>The scaler computes mean and std from your training data, transforms it, and you're ready to train.</div>`,
+  render(s) {
+    dimAll();
+  }
+},
+
+// ── 2: Network Architecture ──
+{
+  phase: 'forward', title: 'Meet the Network',
+  formula: `Ad Spend: $${(s.x*50+50).toFixed(0)}k → x = ${fw(s.x)}    |    Target Revenue: $${(s.yTrue*50+50).toFixed(0)}k → y = ${f4(s.yTrue)}`,
+  calc: `Standardized data (from previous step):\n  x = ${fw(s.x)}     (Ad Spend: $${(s.x*50+50).toFixed(0)}k)\n  y_true = ${f4(s.yTrue)}  (Revenue: $${(s.yTrue*50+50).toFixed(0)}k)\n\nNetwork Architecture:\n  Input(1) → Dense(3) → ReLU → Dense(3) → ReLU → Dense(1) → Linear\n  22 learnable parameters (weights + biases)\n\nThe input node receives x = ${fw(s.x)}.\nThe network will transform this through its layers\nto produce a prediction (ŷ).`,
+  explain: `<p><strong>How do neural networks work with data?</strong> ANNs work with tabular data (spreadsheets, dataframes) by processing <strong>one row at a time</strong>. Each row's feature values are fed into the input neurons, the network computes a prediction, and the error is used to update the weights. Repeat across all rows for many rounds (epochs), and the network learns the pattern.</p>
+<p>The input node (labeled <strong>x = ${fw(s.x)}</strong>) receives the <em>standardized</em> value we prepared in the previous step. Use the slider to pick a different Ad Spend value and see how the numbers change.</p>
+<p>Right now: <strong>Ad Spend = $${(s.x*50+50).toFixed(0)}k</strong> (standardized to x = ${fw(s.x)}) and the <strong>actual Revenue = $${(s.yTrue*50+50).toFixed(0)}k</strong> (standardized to y_true = ${f4(s.yTrue)}). That's our target — what we want the network to predict.</p>
+<p><strong>Why only 1 feature?</strong> In real projects, you'd have many features per row (Ad Spend, Season, Market Size, Competitor Price, ...) — each one would get its own input neuron. We're using just 1 feature for simplicity so you can see every single weight and gradient. The math works identically with 1 or 1,000 features.</p>
+<div class="key-insight"><strong>This is the network from the mountain analogy.</strong> Those 22 parameters are your "position on the mountain." The input node (x = ${fw(s.x)}) is where the standardized feature enters. The output node (ŷ) is where the prediction comes out. Everything in between is the network learning to transform input into output.</div>`,
+  render(s) {
+    setAllNodes(''); setAllEdges('edge');
+    LAYERS.forEach((L,li) => L.nodes.forEach((n,ni) => {
+      getEl('c-'+nid(li,ni)).className.baseVal = 'node-circle active active-fwd';
+      getEl('lbl-'+nid(li,ni)).textContent = li===0?'x':li===3?'ŷ':('h'+(li)+'.'+(ni+1));
+      getEl('val-'+nid(li,ni)).textContent = '';
+      getEl('bias-'+nid(li,ni)).textContent = '';
+    }));
+    getEl('val-'+nid(0,0)).textContent = fw(s.x);
+    setLoss('', '', 'node-circle');
+  }
+},
+
+// ── 3: Feed Input ──
+{
+  phase: 'forward', title: 'Feed Input Into Network',
+  formula: `x = ${fw(s.x)} → enters the input neuron`,
+  calc: `From our StandardScaler-processed data:\n  Ad Spend: $${(s.x*50+50).toFixed(0)}k → standardized to x = ${fw(s.x)}\n  Revenue:  $${(s.yTrue*50+50).toFixed(0)}k → standardized to y_true = ${f4(s.yTrue)}\n\nThe network receives the standardized x = ${fw(s.x)}\nat the input neuron. Now it will process this value\nthrough its layers to produce a prediction (ŷ).`,
+  explain: `<p>We take the standardized feature value <strong>x = ${fw(s.x)}</strong> from our data and feed it into the network's input neuron. This is the starting point of the <strong>forward pass</strong>.</p>
+<p>The network will now multiply this value by different weights, add biases, and apply activation functions — layer by layer — until it produces a prediction at the output.</p>
+<p>The goal: the output (ŷ) should be as close as possible to the actual Revenue value <strong>y_true = ${f4(s.yTrue)}</strong>. It almost certainly won't be — that's why we need training.</p>
+<div class="key-insight"><strong>One row at a time:</strong> In training, the network processes rows one by one (or in small batches). Each row produces a prediction, an error, and a set of weight adjustments. Over thousands of rows, the weights converge toward values that work well across the whole dataset.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+    setLoss('L', '', '');
+  }
+},
+
+// ── 2: Dense Layer 1 Weighted Sum ──
+{
+  phase: 'forward', title: 'Hidden Layer 1: Weighted Sum',
+  formula: 'z = x × w + b    (weighted sum = input × weight + bias)',
+  calc: (() => {
+    let t = `Variable definitions:\n`;
+    t += `  x = input value (our standardized row data)\n`;
+    t += `  w = weight (how much this neuron "cares" about x)\n`;
+    t += `  b = bias (a starting offset — lets the neuron\n`;
+    t += `      activate even when the input is 0)\n`;
+    t += `  z = weighted sum (raw score before activation)\n\n`;
+    for (let i = 0; i < 3; i++) {
+      t += `Neuron ${i+1}:  z =  x   ×   w   +   b\n`;
+      t += `          = ${fw(s.x)} × ${fw(W1[i])} + ${fw(b1[i])}\n`;
+      t += `          = ${fc(s.x * W1[i])} + ${fw(b1[i])}\n`;
+      t += `          = <span class="result">${fc(s.Z1[i])}</span>\n\n`;
+    }
+    return t;
+  })(),
+  explain: `<p>Each neuron computes a <strong>weighted sum</strong>: multiply the input by a weight, then add a bias.</p>
+<p><strong>What is a weight?</strong> A weight controls how much influence the input has on this neuron. A large positive weight means "this input matters a lot." A negative weight means "flip the signal." A weight near zero means "mostly ignore this input." During training, the network adjusts these weights to improve predictions.</p>
+<p><strong>What is a bias? Why do we need it?</strong> The bias is an offset that lets the neuron fire even when the input is 0. Without bias, if x = 0, the output would always be 0 × w = 0 regardless of the weight. The bias gives the neuron flexibility to shift its output up or down — just like the <strong>b</strong> in the equation y = mx + <strong>b</strong>. It sets a baseline that the neuron can build on.</p>
+<p><strong>How do we choose starting weights?</strong> We initialize weights <strong>randomly</strong> — small random numbers near zero. Why not start them all at the same value? If every neuron had identical weights, they'd all compute the exact same thing and learn the exact same pattern — the entire layer would be redundant. Random initialization <strong>breaks this symmetry</strong>, letting each neuron specialize in detecting different features. Biases typically start at 0 or small values.</p>
+<p>With x = ${fw(s.x)}, the three neurons produce raw scores: <strong>[${s.Z1.map(z=>fc(z)).join(', ')}]</strong>. These "pre-activation" values go to ReLU next.</p>
+<div class="key-insight"><strong>Notice:</strong> Neuron 2 has weight ${fw(W1[1])} (negative!), so it flips the input's sign. With x = ${fw(s.x)} and bias ${fw(b1[1])}, it gets z = ${fc(s.Z1[1])}${s.Z1[1] < 0 ? '. That negative score means this neuron will be <strong>silenced</strong> by ReLU in the next step — it won\'t participate in this prediction at all.' : '. It survived — this neuron will stay active.'}</div>`,
+  render(s) {
+    dimAll();
+    activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+    for (let i = 0; i < 3; i++) {
+      activateNode(1, i, 'active-fwd', 'z'+(i+1), fc(s.Z1[i]));
+      activateEdge(0, 0, i, 'flow-fwd');
+      showWeight(0, 0, i, fw(W1[i]));
+      showBias(1, i, 'b='+fw(b1[i]));
+    }
+  }
+},
+
+// ── 3: ReLU 1 ──
+{
+  phase: 'forward', title: 'Hidden Layer 1: ReLU Activation',
+  formula: 'a_i = max(0, z_i)',
+  calc: (() => {
+    let t = '';
+    for (let i = 0; i < 3; i++) {
+      const alive = s.Z1[i] > 0;
+      const cls = alive ? 'alive' : 'dead';
+      const tag = alive ? '✓ passes through' : '✗ BLOCKED (set to 0)';
+      t += `<span class="${cls}">Neuron ${i+1}:  max(0, ${fc(s.Z1[i])}) = ${fc(s.A1[i])}  ${tag}</span>\n`;
+    }
+    return t;
+  })(),
+  explain: `<p><strong>ReLU</strong> (Rectified Linear Unit) is the activation function for hidden layers. It does one simple thing: if the value is <strong>positive</strong>, it passes through unchanged. If <strong>negative or zero</strong>, it becomes 0.</p>
+<p><strong>Why zero it out?</strong> Zeroing means this neuron is <em>turned off</em> for this particular input. It produces no signal, contributes nothing to the prediction, and won't receive any weight updates during backpropagation. It's as if the neuron doesn't exist for this data point. This lets the network learn selective patterns -- different neurons activate for different inputs, like how different features matter for different observations in a dataset.</p>
+<p>Output: <strong>[${s.A1.map(a=>fc(a)).join(', ')}]</strong>${s.A1.some(a=>a===0) ? ' -- zeroed neurons carry no information forward. Only the active neurons shape the prediction.' : ''}</p>
+<div class="key-insight"><strong>Why do we need ReLU at all?</strong> Without an activation function, stacking layers would be pointless -- multiplying matrices together just gives you another matrix. The entire deep network would collapse into a single linear equation (like plain linear regression). ReLU adds the <strong>nonlinearity</strong> that lets the network learn curves, thresholds, and complex patterns that a straight line never could.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+    for (let i = 0; i < 3; i++) {
+      const alive = s.A1[i] > 0;
+      activateNode(1, i, alive ? 'active-relu-alive' : 'active-relu-dead',
+        'a'+(i+1), fc(s.A1[i]));
+      activateEdge(0, 0, i, 'edge active-fwd');
+    }
+  }
+},
+
+// ── 4: Dense Layer 2 ──
+{
+  phase: 'forward', title: 'Hidden Layer 2: Weighted Sum',
+  formula: 'z_j = Σ_i (a_i × w_ij) + b_j',
+  calc: (() => {
+    let t = '';
+    for (let j = 0; j < 3; j++) {
+      t += `Neuron ${j+1}:  z = `;
+      const terms = [];
+      for (let i = 0; i < 3; i++) {
+        terms.push(`${fc(s.A1[i])}×${fw(W2[i][j])}`);
+      }
+      t += terms.join(' + ') + ` + ${fw(b2[j])}\n`;
+      const vals = [];
+      for (let i = 0; i < 3; i++) vals.push(fc(s.A1[i] * W2[i][j]));
+      t += `          = ${vals.join(' + ')} + ${fw(b2[j])}\n`;
+      t += `          = <span class="result">${fc(s.Z2[j])}</span>\n\n`;
+    }
+    return t;
+  })(),
+  explain: `<p>Each neuron in Layer 2 receives input from <strong>ALL</strong> neurons in Layer 1 — that's what "dense" (fully connected) means.</p>
+<p>Notice: Neuron 2 in Layer 1 output 0.00 (killed by ReLU), so its weights ${s.A1[1]===0 ? '<strong>don\'t matter</strong> — multiplying by 0 gives 0 regardless of weight.' : 'still contribute to the sum.'}</p>
+<p>Pre-activation values: <strong>[${s.Z2.map(z=>fc(z)).join(', ')}]</strong></p>
+<div class="key-insight"><strong>Data flow:</strong> The outputs of Layer 1 [${s.A1.map(a=>fc(a)).join(', ')}] become the INPUTS to Layer 2. Each value gets multiplied by different weights for each neuron in Layer 2.</div>`,
+  render(s) {
+    dimAll();
+    for (let i = 0; i < 3; i++) {
+      const alive = s.A1[i] > 0;
+      activateNode(1, i, alive ? 'active-fwd' : 'active-relu-dead', 'a'+(i+1), fc(s.A1[i]));
+    }
+    for (let j = 0; j < 3; j++) {
+      activateNode(2, j, 'active-fwd', 'z'+(j+1), fc(s.Z2[j]));
+      showBias(2, j, 'b='+fw(b2[j]));
+      for (let i = 0; i < 3; i++) {
+        activateEdge(1, i, j, s.A1[i] > 0 ? 'flow-fwd' : 'edge dead');
+        showWeight(1, i, j, fw(W2[i][j]));
+      }
+    }
+  }
+},
+
+// ── 5: ReLU 2 ──
+{
+  phase: 'forward', title: 'Hidden Layer 2: ReLU Activation',
+  formula: 'a_j = max(0, z_j)',
+  calc: (() => {
+    let t = '';
+    for (let j = 0; j < 3; j++) {
+      const alive = s.Z2[j] > 0;
+      const cls = alive ? 'alive' : 'dead';
+      const tag = alive ? '✓ passes' : '✗ BLOCKED';
+      t += `<span class="${cls}">Neuron ${j+1}:  max(0, ${fc(s.Z2[j])}) = ${fc(s.A2[j])}  ${tag}</span>\n`;
+    }
+    t += `\nActivation output: [${s.A2.map(a=>fc(a)).join(', ')}]`;
+    t += `\nThese values feed into the output layer.`;
+    return t;
+  })(),
+  explain: `<p>Same ReLU applied to Layer 2. Positive values pass, negatives are zeroed.</p>
+<p>Output: <strong>[${s.A2.map(a=>fc(a)).join(', ')}]</strong></p>
+<p>${s.A2.filter(a=>a===0).length > 0 ? `${s.A2.filter(a=>a===0).length} neuron(s) are dead. During backpropagation, gradients will be <strong>blocked</strong> at these dead neurons — they won't learn from this input.` : 'All neurons are alive for this input — all will receive gradient updates.'}</p>
+<div class="key-insight"><strong>Pattern:</strong> Across two ReLU layers, ${s.A1.filter(a=>a===0).length + s.A2.filter(a=>a===0).length} out of 6 neurons are dead. The remaining active neurons form a <strong>sparse representation</strong> of the input — different inputs activate different subsets of neurons.</div>`,
+  render(s) {
+    dimAll();
+    for (let j = 0; j < 3; j++) {
+      const alive = s.A2[j] > 0;
+      activateNode(2, j, alive ? 'active-relu-alive' : 'active-relu-dead',
+        'a'+(j+1), fc(s.A2[j]));
+    }
+    for (let i = 0; i < 3; i++)
+      activateNode(1, i, 'dimmed', 'a'+(i+1), fc(s.A1[i]));
+  }
+},
+
+// ── 6: Output Layer ──
+{
+  phase: 'forward', title: 'Output: Weighted Sum + Linear Activation',
+  formula: 'ŷ = f(z) = z = Σ_i (a_i × w_i) + b',
+  calc: (() => {
+    const terms = [];
+    for (let i = 0; i < 3; i++) terms.push(`${fc(s.A2[i])}×${fw(W3[i])}`);
+    let t = `Weighted sum:\n  z = ${terms.join(' + ')} + ${fw(b3)}\n`;
+    const vals = s.A2.map((a,i) => fc(a * W3[i]));
+    t += `    = ${vals.join(' + ')} + ${fw(b3)}\n`;
+    t += `    = <span class="result">${fc(s.Z3)}</span>\n\n`;
+    t += `Linear activation:\n  ŷ = f(z) = z = <span class="result">${fc(s.yPred)}</span>\n\n`;
+    t += `(Linear just passes the value through unchanged)`;
+    return t;
+  })(),
+  explain: `<p>The single output neuron computes another weighted sum. Then the <strong>Linear activation</strong> (identity function) passes it through unchanged: f(z) = z.</p>
+<p>Our predicted Revenue: <strong>ŷ = ${f3(s.yPred)}</strong></p>
+<p>The actual Revenue from our data: <strong>y = ${f4(s.yTrue)}</strong></p>
+<p>How far off: ${f3(s.yPred)} - ${f4(s.yTrue)} = <strong>${f3(s.yPred - s.yTrue)}</strong></p>
+<div class="key-insight"><strong>Classification vs Regression:</strong> Classification uses <strong>Softmax</strong> to squeeze outputs into probabilities [0, 1]. Regression uses <strong>Linear</strong> to allow any real number — the network can predict any dollar amount, positive or negative.</div>`,
+  render(s) {
+    dimAll();
+    for (let i = 0; i < 3; i++) {
+      const alive = s.A2[i] > 0;
+      activateNode(2, i, alive ? 'active-fwd' : 'active-relu-dead', 'a'+(i+1), fc(s.A2[i]));
+      activateEdge(2, i, 0, alive ? 'flow-fwd' : 'edge dead');
+      showWeight(2, i, 0, fw(W3[i]));
+    }
+    activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+    showBias(3, 0, 'b='+fw(b3));
+  }
+},
+
+// ── 7: Loss ──
+{
+  phase: 'loss', title: 'Loss: Mean Squared Error (MSE)',
+  formula: 'L = (y_true - ŷ)²',
+  calc: `L = (y_true - ŷ)²\n  = (${f4(s.yTrue)} - ${f3(s.yPred)})²\n  = (${f4(s.yTrue - s.yPred)})²\n  = <span class="result">${f4(s.loss)}</span>`,
+  explain: `<p><strong>Mean Squared Error</strong> measures how far off our prediction is from the true value. If you've done any statistics or regression, this is the same squared-residual you know from OLS -- just applied one sample at a time.</p>
+<p>Why square it?</p>
+<p>1. All errors become positive (whether we overestimate or underestimate)<br>
+2. Large errors are punished <strong>much</strong> more than small ones (an error of 2 costs 4x as much as an error of 1)</p>
+<p>Our loss: <strong>${f4(s.loss)}</strong>. ${s.loss < 0.01 ? 'Very small -- the prediction is close!' : s.loss < 0.1 ? 'Moderate error.' : 'Significant error -- the network needs to adjust its weights.'}</p>
+<p>🏔️ <em>Mountain analogy: We just checked our altimeter. Loss = ${f4(s.loss)} is our altitude -- ${s.loss < 0.01 ? 'we\'re very close to the valley floor!' : s.loss < 0.1 ? 'we\'re partway down.' : 'we\'re still high up. Time to figure out which direction is downhill.'}</em></p>
+<div class="key-insight"><strong>What comes next:</strong> We know the error. Now we need to figure out <strong>which of the 22 weights to blame</strong> for it and <strong>how much to adjust each one</strong>. That's what backpropagation does -- it's like a sensitivity analysis that traces the error back to each individual parameter.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(3, 0, 'active-fwd', 'ŷ', f3(s.yPred));
+    getEl('e-loss').className.baseVal = 'edge flow-fwd';
+    getEl('c-loss').setAttribute('stroke', 'var(--red)');
+    getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+    getEl('lbl-loss').textContent = 'L';
+    getEl('val-loss').textContent = f4(s.loss);
+  }
+},
+
+// ── NEW: What is Backpropagation? (intermediary step) ──
+{
+  phase: 'backward', title: 'What is Backpropagation?',
+  formula: 'Goal: Find the gradient (sensitivity) of the loss with respect to every weight and bias in the network.',
+  calc: `THE PROBLEM:\n  We have 22 weights and biases. We know the prediction\n  was wrong (loss = ${f4(s.loss)}). But which weights are\n  to blame? And by how much should we change each one?\n\nTHE SOLUTION — BACKPROPAGATION:\n  Walk the error BACKWARDS through the network, layer\n  by layer, computing each weight's contribution to the\n  error along the way.\n\n  Loss  →  Output  →  Hidden 2  →  Hidden 1  →  Done!\n  ────     ──────     ────────     ────────     ────\n  Step 1   Step 2     Step 3       Step 4\n\nTHE TOOL — DERIVATIVES:\n  A derivative answers a simple question:\n    "If I tweak X by a tiny amount,\n     how much does Y change?"\n\n  We use derivatives because they tell us EXACTLY how\n  sensitive the loss is to each weight — that's the\n  number we need to know how to adjust each weight.\n\nTHE END RESULT:\n  A "sensitivity score" (gradient) for each of the\n  22 weights and biases. These numbers tell us\n  exactly how much, and in what direction, to nudge\n  each parameter to reduce the error.`,
+  explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights to blame for an error and by how much. It's the engine that makes learning possible.</p>
+<p><strong>For statisticians:</strong> Think of backpropagation as computing the <em>partial derivative of the loss with respect to each parameter</em> — but for a multi-layer model. In simple linear regression you have one β per predictor; here we have 22 weights spread across multiple layers, and we need a "marginal effect" for each one.</p>
+<p><strong>For data analysts:</strong> Think of it as a structured <em>sensitivity analysis</em>. We ask of every single weight: "If I changed you by a tiny amount, how much would the prediction error change?" The answer is that weight's gradient — its responsibility score for the current error.</p>
+<p><strong>Why derivatives?</strong> A derivative IS sensitivity. It's literally the answer to "how much does Y change when X changes by a little?" Since we want to <em>reduce</em> the loss, we need to know how each weight pushes the loss up or down — and that's exactly what a derivative gives us.</p>
+<p><strong>Why "back"-propagation?</strong> The error originates at the OUTPUT (where the prediction was wrong). To assign blame to weights deeper in the network, we have to trace the influence backwards — using the chain rule: if weight W affects neuron N, and neuron N affects the loss, then W's effect on loss = (W→N) × (N→loss). Multiply sensitivities along the chain.</p>
+<div class="key-insight"><strong>End result of the next 4 steps:</strong> A complete set of <strong>22 gradients</strong> — one per weight and bias. Each gradient tells us: (1) which direction to nudge that parameter (sign), and (2) how strongly (magnitude). The final "Update Weights" step uses these gradients to actually change the weights and improve the network.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(3, 0, 'active-loss', 'L', f4(s.loss));
+    getEl('e-loss').className.baseVal = 'edge flow-bwd';
+    getEl('c-loss').setAttribute('stroke', 'var(--orange)');
+    getEl('c-loss').setAttribute('fill', 'var(--orange-light)');
+    getEl('lbl-loss').textContent = 'L';
+    getEl('val-loss').textContent = f4(s.loss);
+  }
+},
+
+// ── Loss Gradient ──
+{
+  phase: 'backward', title: 'Backprop Start: Loss Gradient',
+  formula: '∂L/∂ŷ = -2(y_true - ŷ)',
+  ref: `<div class="ref-section">
+    <div class="ref-label">y_true (target)</div>
+    <div class="ref-value">${f4(s.yTrue)}</div>
+    <div class="ref-source">from Step 1: Data Prep (standardized)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">ŷ (prediction)</div>
+    <div class="ref-value">${f3(s.yPred)}</div>
+    <div class="ref-source">from Step 8: Output Layer (forward)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Loss L</div>
+    <div class="ref-value">${f4(s.loss)}</div>
+    <div class="ref-source">from Step 9: Loss (MSE)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Where used</div>
+    <div class="ref-value">∂L/∂ŷ = -2(y_true - ŷ)</div>
+  </div>`,
+  calc: `∂L/∂ŷ = -2 × (y_true - ŷ)\n        = -2 × (${f4(s.yTrue)} - ${f3(s.yPred)})\n        = -2 × (${f4(s.yTrue - s.yPred)})\n        = <span class="result">${f3(s.dLdy)}</span>\n\n${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!'}`,
+  explain: `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. It answers: "If I nudge this input by a tiny amount, how much does the output change?" Think of it like a <em>marginal effect</em> in statistics -- it tells you the rate of change.</p>
+<p>Here, ∂L/∂ŷ = <strong>${f3(s.dLdy)}</strong> means: for every 1-unit increase in our prediction ŷ, the loss changes by about ${f3(Math.abs(s.dLdy))} units. ${s.dLdy > 0 ? 'It\'s <strong>positive</strong>, so increasing ŷ makes things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'It\'s <strong>negative</strong>, so increasing ŷ actually reduces the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero -- our prediction is perfect!'}</p>
+<p><strong>Why do we care?</strong> This single number launches the entire backward pass. It's the starting signal that will flow through every layer, telling each weight: "Here's how much you personally contributed to the error, and which direction to change."</p>
+<div class="key-insight"><strong>🏔️ Mountain analogy:</strong> Remember the fog? You can't see the whole landscape, but you <em>can</em> feel the slope under your feet -- that's exactly what this derivative is. Positive slope (${f3(s.dLdy)} ${s.dLdy > 0 ? '> 0' : s.dLdy < 0 ? '< 0' : '= 0'})? ${s.dLdy > 0 ? 'You\'re going uphill -- turn around.' : s.dLdy < 0 ? 'You\'re heading downhill -- keep going.' : 'Flat ground -- you might be at the bottom!'} Backpropagation (next steps) will feel the slope for <strong>every weight simultaneously</strong> -- like having 22 altimeters, one per parameter.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(3, 0, 'active-bwd', 'ŷ', f3(s.yPred));
+    getEl('e-loss').className.baseVal = 'edge flow-bwd';
+    getEl('c-loss').setAttribute('stroke', 'var(--red)');
+    getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+    getEl('lbl-loss').textContent = '∂L';
+    getEl('val-loss').textContent = f3(s.dLdy);
+  }
+},
+
+// ── Backprop Output Layer ──
+{
+  phase: 'backward', title: 'Backprop: Output Layer (Dense 3)',
+  formula: '∂L/∂w_i = a_i × ∂L/∂ŷ\n∂L/∂b = ∂L/∂ŷ\n∂L/∂a_i = w_i × ∂L/∂ŷ',
+  ref: `<div class="ref-section">
+    <div class="ref-label">Layer 2 activations (a_i)</div>
+    <div class="ref-value">a_1 = ${fc(s.A2[0])}\na_2 = ${fc(s.A2[1])}\na_3 = ${fc(s.A2[2])}</div>
+    <div class="ref-source">from Step 7: Hidden Layer 2 ReLU (forward)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Output weights (w_i)</div>
+    <div class="ref-value">w_1 = ${fw(W3[0])}\nw_2 = ${fw(W3[1])}\nw_3 = ${fw(W3[2])}</div>
+    <div class="ref-source">network parameters (initialized at start)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Incoming gradient</div>
+    <div class="ref-value">∂L/∂ŷ = ${f3(s.dLdy)}</div>
+    <div class="ref-source">from Step 11: Loss Gradient (backward)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Where used in formulas</div>
+    <div class="ref-value">∂L/∂w_i = <strong>a_i</strong> × ∂L/∂ŷ\n∂L/∂a_i = <strong>w_i</strong> × ∂L/∂ŷ</div>
+  </div>`,
+  calc: (() => {
+    let t = `Incoming gradient: ∂L/∂ŷ = ${f3(s.dLdy)}\n`;
+    t += `(Linear backward: gradient passes through unchanged)\n\n`;
+    t += `Weight gradients (∂L/∂w = a × gradient):\n`;
+    for (let i = 0; i < 3; i++)
+      t += `  ∂L/∂w${i+1} = ${fc(s.A2[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dW3[i])}</span>\n`;
+    t += `\nBias gradient:\n  ∂L/∂b = <span class="result">${fc(s.db3g)}</span>\n`;
+    t += `\nGradient passed to Layer 2 (∂L/∂a = w × gradient):\n`;
+    for (let i = 0; i < 3; i++)
+      t += `  ∂L/∂a${i+1} = ${fw(W3[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dA2[i])}</span>\n`;
+    return t;
+  })(),
+  explain: `<p><strong>Tracing blame backward.</strong> We know the overall error. Now the question is: which weights at this layer are most responsible?</p>
+<p><strong>∂L/∂W₃ (weight sensitivity)</strong> -- "How much does each weight contribute to the error?" This is like computing the <em>variable importance</em> for each connection. A weight connected to a highly active neuron gets a large gradient because it had a big influence on the prediction.</p>
+<p><strong>∂L/∂b₃ (bias sensitivity)</strong> -- "How much does the bias contribute?" The bias shifts the entire output, so its gradient equals the incoming signal directly.</p>
+<p><strong>∂L/∂A₂ (passed backward)</strong> -- "How much did each Layer 2 neuron contribute to the error?" These gradients get sent to the previous layer so it can do the same analysis. Think of it as <em>passing the blame upstream</em>.</p>
+<div class="key-insight"><strong>Dead neuron = zero influence:</strong> Neuron 2 in Layer 2 output a₂ = 0 (killed by ReLU). Its weight gradient is 0 x ${f3(s.dLdy)} = 0. In data science terms, this is like a variable with <strong>zero variance</strong> -- it can't explain anything, so its coefficient can't be updated. The weight <strong>won't change</strong> this round.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', f3(s.dLdy));
+    for (let i = 0; i < 3; i++) {
+      activateNode(2, i, 'active-bwd', '∂L/∂a', f3(s.dA2[i]));
+      activateEdge(2, i, 0, 'flow-bwd');
+      showWeight(2, i, 0, '∂w='+f3(s.dW3[i]));
+    }
+  }
+},
+
+// ── Backprop ReLU 2 + Dense 2 ──
+{
+  phase: 'backward', title: 'Backprop: Through ReLU 2 & Dense Layer 2',
+  formula: 'ReLU: ∂L/∂z = ∂L/∂a × (1 if z>0, else 0)\nDense: ∂L/∂w_ij = a_i × ∂L/∂z_j',
+  ref: `<div class="ref-section">
+    <div class="ref-label">Layer 2 pre-activations (z)</div>
+    <div class="ref-value">z_1 = ${fc(s.Z2[0])}\nz_2 = ${fc(s.Z2[1])}\nz_3 = ${fc(s.Z2[2])}</div>
+    <div class="ref-source">from Step 6: Hidden Layer 2 Weighted Sum (forward) — used to gate ReLU</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Layer 1 activations (a_i)</div>
+    <div class="ref-value">a_1 = ${fc(s.A1[0])}\na_2 = ${fc(s.A1[1])}\na_3 = ${fc(s.A1[2])}</div>
+    <div class="ref-source">from Step 5: Hidden Layer 1 ReLU (forward)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Incoming gradients ∂L/∂a (Layer 2)</div>
+    <div class="ref-value">∂L/∂a_1 = ${fc(s.dA2[0])}\n∂L/∂a_2 = ${fc(s.dA2[1])}\n∂L/∂a_3 = ${fc(s.dA2[2])}</div>
+    <div class="ref-source">from Step 12: Output Layer Backward</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Where used in formulas</div>
+    <div class="ref-value">ReLU gate uses <strong>z</strong> (alive if z>0)\nWeight grad uses <strong>a_i</strong> (Layer 1 outputs)</div>
+  </div>`,
+  calc: (() => {
+    let t = `ReLU 2 backward (gate gradients through):\n`;
+    for (let j = 0; j < 3; j++) {
+      const alive = s.Z2[j] > 0;
+      const cls = alive ? 'alive' : 'dead';
+      t += `  <span class="${cls}">∂L/∂z${j+1}: z=${fc(s.Z2[j])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ2[j])}</span>\n`;
+    }
+    t += `\nDense 2 weight gradients (∂L/∂w = a_prev × ∂L/∂z):\n`;
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        t += `  w[${i}][${j}]: ${fc(s.A1[i])} × ${fc(s.dZ2[j])} = ${fc(s.dW2[i][j])}\n`;
+      }
+    }
+    t += `\nGradient passed to Layer 1:\n`;
+    for (let j = 0; j < 3; j++)
+      t += `  ∂L/∂a${j+1} = <span class="result">${fc(s.dA1[j])}</span>\n`;
+    return t;
+  })(),
+  explain: `<p><strong>ReLU backward = a yes/no gate.</strong> Remember, ReLU zeroed out negative values on the forward pass. Now it does the same to gradients: if a neuron was active (z &gt; 0), the gradient flows through. If it was dead (z &le; 0), the gradient is <strong>blocked completely</strong>.</p>
+<p><strong>In data science terms:</strong> A blocked gradient means "changing this weight would have <em>no effect whatsoever</em> on the prediction." It's like a feature that was dropped from your model -- it contributes nothing right now, so there's nothing to optimize.</p>
+<p><strong>Dense 2 backward</strong> then computes the weight gradients (sensitivity of each weight to the error) and passes blame further back to Layer 1.</p>
+<p>Gradients reaching Layer 1: <strong>[${s.dA1.map(d=>fc(d)).join(', ')}]</strong></p>
+<div class="key-insight"><strong>Dying ReLU problem:</strong> ${s.dZ2.filter(d=>d===0).length} gradient(s) were zeroed by ReLU. Those neurons and all weights feeding into them get <strong>zero update</strong>. If a neuron dies for <em>every</em> input (not just this one), it becomes permanently useless -- like a survey question everyone skips. This is why alternatives like Leaky ReLU and ELU exist.</div>`,
+  render(s) {
+    dimAll();
+    for (let j = 0; j < 3; j++) {
+      const alive = s.Z2[j] > 0;
+      activateNode(2, j, alive ? 'active-bwd' : 'active-relu-dead',
+        '∂L/∂z', fc(s.dZ2[j]));
+    }
+    for (let i = 0; i < 3; i++) {
+      activateNode(1, i, 'active-bwd', '∂L/∂a', fc(s.dA1[i]));
+      for (let j = 0; j < 3; j++) {
+        const alive = s.dZ2[j] !== 0 && s.A1[i] !== 0;
+        activateEdge(1, i, j, alive ? 'flow-bwd' : 'edge dead');
+      }
+    }
+  }
+},
+
+// ── Backprop ReLU 1 + Dense 1 ──
+{
+  phase: 'backward', title: 'Backprop: Through ReLU 1 & Dense Layer 1',
+  formula: 'ReLU: gate by z>0\nDense: ∂L/∂w = x × ∂L/∂z',
+  ref: `<div class="ref-section">
+    <div class="ref-label">Layer 1 pre-activations (z)</div>
+    <div class="ref-value">z_1 = ${fc(s.Z1[0])}\nz_2 = ${fc(s.Z1[1])}\nz_3 = ${fc(s.Z1[2])}</div>
+    <div class="ref-source">from Step 4: Hidden Layer 1 Weighted Sum (forward) — used to gate ReLU</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Input value (x)</div>
+    <div class="ref-value">x = ${fw(s.x)}</div>
+    <div class="ref-source">from Step 1: Data Prep (standardized)</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Incoming gradients ∂L/∂a (Layer 1)</div>
+    <div class="ref-value">∂L/∂a_1 = ${fc(s.dA1[0])}\n∂L/∂a_2 = ${fc(s.dA1[1])}\n∂L/∂a_3 = ${fc(s.dA1[2])}</div>
+    <div class="ref-source">from Step 13: Hidden Layer 2 Backward</div>
+  </div>
+  <div class="ref-section">
+    <div class="ref-label">Where used in formulas</div>
+    <div class="ref-value">ReLU gate uses <strong>z</strong> (alive if z>0)\nWeight grad uses <strong>x</strong> (the input)</div>
+  </div>`,
+  calc: (() => {
+    let t = `ReLU 1 backward:\n`;
+    for (let i = 0; i < 3; i++) {
+      const alive = s.Z1[i] > 0;
+      const cls = alive ? 'alive' : 'dead';
+      t += `  <span class="${cls}">∂L/∂z${i+1}: z=${fc(s.Z1[i])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ1[i])}</span>\n`;
+    }
+    t += `\nDense 1 weight gradients:\n`;
+    for (let i = 0; i < 3; i++)
+      t += `  ∂L/∂w${i+1} = x × ∂L/∂z${i+1} = ${fw(s.x)} × ${fc(s.dZ1[i])} = <span class="result">${fc(s.dW1g[i])}</span>\n`;
+    t += `\nBias gradients:\n`;
+    for (let i = 0; i < 3; i++)
+      t += `  ∂L/∂b${i+1} = <span class="result">${fc(s.db1g[i])}</span>\n`;
+    t += `\nBackpropagation complete! We now have gradients\nfor ALL 22 parameters in the network.`;
+    return t;
+  })(),
+  explain: `<p><strong>The blame reaches the first layer.</strong> Same pattern: ReLU gates the gradient, then Dense computes how sensitive each weight is to the error.</p>
+<p>We now have a <strong>sensitivity score (gradient) for every single weight and bias</strong> in the entire network -- all 22 of them. Each gradient answers: "If I increase this parameter by a tiny amount, how much does the error change?"</p>
+<p><strong>The big picture:</strong> Think of it like running a regression where your "coefficients" are the weight updates. Large gradient = this weight had a big impact on the error and needs a big correction. Small gradient = minor player. Zero gradient = irrelevant (dead neuron path).</p>
+<div class="key-insight"><strong>Why "chain rule"?</strong> The gradient for w1 in Layer 1 was computed by multiplying sensitivity scores through 6 operations: Loss &rarr; Linear &rarr; Dense3 &rarr; ReLU2 &rarr; Dense2 &rarr; ReLU1 &rarr; Dense1. Each link in the chain says "how sensitive am I to my input?" and we multiply them all together. In statistics, this is like computing an <strong>indirect effect</strong> through a chain of mediating variables. That's backpropagation -- just repeated multiplication of local sensitivities!</div>`,
+  render(s) {
+    dimAll();
+    activateNode(0, 0, 'active-bwd', 'x', fw(s.x));
+    for (let i = 0; i < 3; i++) {
+      const alive = s.Z1[i] > 0;
+      activateNode(1, i, alive ? 'active-bwd' : 'active-relu-dead',
+        '∂L/∂z', fc(s.dZ1[i]));
+      activateEdge(0, 0, i, alive ? 'flow-bwd' : 'edge dead');
+      showWeight(0, 0, i, '∂w='+fc(s.dW1g[i]));
+    }
+  }
+},
+
+// ── 12: Weight Update ──
+{
+  phase: 'update', title: 'Weight & Bias Update',
+  formula: 'w_new = w_old - lr × ∂L/∂w\n(learning rate = ' + LR + ')',
+  calc: (() => {
+    let t = `Learning rate: ${LR}\n\n`;
+    t += `═══ Layer 1 Weights ═══\n`;
+    for (let i = 0; i < 3; i++) {
+      const nw = s.W1n[i];
+      const ch = nw - W1[i];
+      t += `  w${i+1}: ${fw(W1[i])} - ${LR}×${fc(s.dW1g[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+    }
+    t += `\n═══ Layer 2 Weights (sample) ═══\n`;
+    for (let i = 0; i < 3; i++) {
+      const nw = s.W2n[i][0];
+      const ch = nw - W2[i][0];
+      t += `  w[${i}][0]: ${fw(W2[i][0])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+    }
+    t += `\n═══ Layer 3 Weights ═══\n`;
+    for (let i = 0; i < 3; i++) {
+      const nw = s.W3n[i];
+      const ch = nw - W3[i];
+      t += `  w${i+1}: ${fw(W3[i])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+    }
+    // Compute new prediction
+    const Z1n = s.W1n.map((w, i) => s.x * w + s.b1n[i]);
+    const A1n = Z1n.map(z => Math.max(0, z));
+    const Z2n = [0,1,2].map(j => A1n[0]*s.W2n[0][j]+A1n[1]*s.W2n[1][j]+A1n[2]*s.W2n[2][j]+s.b2n[j]);
+    const A2n = Z2n.map(z => Math.max(0, z));
+    const yPredNew = A2n[0]*s.W3n[0]+A2n[1]*s.W3n[1]+A2n[2]*s.W3n[2]+s.b3n;
+    const lossNew = (s.yTrue - yPredNew) ** 2;
+    t += `\n═══ Result After Update ═══\n`;
+    t += `  Old prediction: ${fc(s.yPred)}  |  Loss: ${fc(s.loss)}\n`;
+    t += `  New prediction: <span class="result">${fc(yPredNew)}</span>  |  Loss: <span class="result">${fc(lossNew)}</span>\n`;
+    t += `  Improvement: ${f4(s.loss - lossNew)} (${((1 - lossNew/s.loss)*100).toFixed(1)}% reduction)`;
+    return t;
+  })(),
+  explain: `<p>The <strong>update rule</strong> is simple: take each weight's sensitivity score (gradient), scale it by a small step size (learning rate = ${LR}), and subtract it from the current weight.</p>
+<p><strong>Why subtract?</strong> The gradient points "uphill" -- the direction that <em>increases</em> the error. We want to go <em>downhill</em> (reduce error), so we move in the opposite direction. This is called <strong>gradient descent</strong>.</p>
+<p><strong>The learning rate (${LR})</strong> controls how big each step is. Too large and you <em>leap over</em> the valley and land on the other side (the loss actually gets worse!). Too small and you inch toward the bottom but it takes forever. Picking the right step size is one of the most important decisions in training.</p>
+<p>Weights with zero gradient (dead ReLU paths) don't change at all -- there's no slope to follow, so there's no direction to step.</p>
+<div class="key-insight"><strong>🏔️ Mountain analogy -- the full loop:</strong> We just completed one full cycle: predicted (walked forward) &rarr; measured the error (checked altitude) &rarr; felt the slope for every weight (backpropagation) &rarr; took one step downhill (weight update). In real training, we repeat this <strong>thousands of times</strong>, each time inching closer to the valley. The fog means we might settle in a <em>local</em> minimum (a shallow valley) instead of the global minimum (the deepest one) -- but in practice, that's usually good enough. The regression notebook uses <strong>Adam</strong>, a smarter optimizer that adapts each weight's step size automatically, for 10,000 of these cycles.</div>`,
+  render(s) {
+    dimAll();
+    LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+      activateNode(li, ni, 'active-update', '', '');
+    }));
+    for (let i = 0; i < 3; i++) {
+      getEl('lbl-'+nid(1,i)).textContent = 'Δw';
+      getEl('val-'+nid(1,i)).textContent = fc(s.dW1g[i]);
+    }
+    for (let j = 0; j < 3; j++) {
+      getEl('lbl-'+nid(2,j)).textContent = 'Δw';
+      getEl('val-'+nid(2,j)).textContent = '...';
+    }
+    activateNode(0, 0, 'active-update', 'x', fw(s.x));
+    activateNode(3, 0, 'active-update', 'ŷ', fc(s.yPred));
+    for (let li = 0; li < 3; li++) {
+      const from = LAYERS[li].nodes, to = LAYERS[li+1].nodes;
+      from.forEach((_, fi) => to.forEach((_, ti) => {
+        activateEdge(li, fi, ti, 'edge active-update');
+      }));
+    }
+  }
+}
+
+  ];
+}
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 6: RENDER HELPERS
+// ════════════════════════════════════════════════════════════════
+
+function getEl(id) { return document.getElementById(id); }
+
+function dimAll() {
+  LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+    getEl('c-'+nid(li,ni)).className.baseVal = 'node-circle dimmed';
+    getEl('lbl-'+nid(li,ni)).textContent = '';
+    getEl('val-'+nid(li,ni)).textContent = '';
+    getEl('bias-'+nid(li,ni)).textContent = '';
+  }));
+  for (let li = 0; li < LAYERS.length - 1; li++) {
+    const from = LAYERS[li].nodes, to = LAYERS[li+1].nodes;
+    from.forEach((_, fi) => to.forEach((_, ti) => {
+      getEl(eid(li, fi, ti)).className.baseVal = 'edge dimmed';
+      getEl('wl-'+eid(li, fi, ti)).textContent = '';
+      getEl('wl-'+eid(li, fi, ti)).className.baseVal = 'weight-label';
+    }));
+  }
+  setLoss('', '', '');
+  getEl('e-loss').className.baseVal = 'edge dimmed';
+}
+
+function setAllNodes(cls) {
+  LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+    getEl('c-'+nid(li,ni)).className.baseVal = 'node-circle ' + cls;
+  }));
+}
+function setAllEdges(cls) {
+  for (let li = 0; li < LAYERS.length - 1; li++) {
+    const from = LAYERS[li].nodes, to = LAYERS[li+1].nodes;
+    from.forEach((_, fi) => to.forEach((_, ti) => {
+      getEl(eid(li, fi, ti)).className.baseVal = cls;
+    }));
+  }
+  getEl('e-loss').className.baseVal = cls;
+}
+
+function activateNode(li, ni, cls, lbl, val) {
+  getEl('c-'+nid(li,ni)).className.baseVal = 'node-circle active ' + cls;
+  getEl('lbl-'+nid(li,ni)).textContent = lbl;
+  getEl('val-'+nid(li,ni)).textContent = val;
+}
+
+function activateEdge(li, fi, ti, cls) {
+  getEl(eid(li, fi, ti)).className.baseVal = 'edge ' + cls;
+}
+
+function showWeight(li, fi, ti, txt) {
+  const wl = getEl('wl-'+eid(li, fi, ti));
+  wl.textContent = txt;
+  wl.className.baseVal = 'weight-label active';
+}
+
+function showBias(li, ni, txt) {
+  getEl('bias-'+nid(li, ni)).textContent = txt;
+}
+
+function setLoss(lbl, val, circleCls) {
+  getEl('lbl-loss').textContent = lbl;
+  getEl('val-loss').textContent = val;
+  getEl('c-loss').setAttribute('stroke', circleCls ? '#9ca3af' : '#e5e7eb');
+  getEl('c-loss').setAttribute('fill', circleCls ? 'white' : '#fafafa');
+}
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 7: STEP BAR + NAVIGATION
+// ════════════════════════════════════════════════════════════════
+
+let currentStep = 0;
+let state = computeAll(0.5);
+let steps = getSteps(state);
+
+const PHASES = [
+  { label: 'Intro', ids: [0], cls: 'intro' },
+  { label: 'Data Prep', ids: [1], cls: 'data' },
+  { label: 'Forward Propagation', ids: [2,3,4,5,6,7,8], cls: 'forward' },
+  { label: 'Loss', ids: [9], cls: 'loss' },
+  { label: 'Backward Propagation', ids: [10,11,12,13,14], cls: 'backward' },
+  { label: 'Update Weights', ids: [15], cls: 'update' },
+];
+
+function buildStepBar() {
+  const bar = getEl('step-bar');
+  bar.innerHTML = '';
+  PHASES.forEach((ph, phIdx) => {
+    const group = document.createElement('div');
+    group.className = 'phase-group expanded';
+    group.id = 'phase-group-' + phIdx;
+
+    const header = document.createElement('div');
+    header.className = 'phase-group-header';
+    header.innerHTML = `
+      <span class="chevron">▶</span>
+      <span class="phase-dot ${ph.cls}"></span>
+      <span class="phase-name">${ph.label}</span>
+      <span class="phase-count">${ph.ids.length}</span>
+    `;
+    header.onclick = () => group.classList.toggle('expanded');
+    group.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'step-list';
+    ph.ids.forEach(id => {
+      const item = document.createElement('div');
+      item.className = 'step-item';
+      item.id = 'dot-' + id;
+      item.dataset.phaseCls = ph.cls;
+      item.innerHTML = `<span class="marker"></span><span class="step-name">${steps[id].title}</span>`;
+      item.onclick = (e) => {
+        e.stopPropagation();
+        currentStep = id;
+        renderStep();
+        // Close mobile sidebar after selecting
+        getEl('sidebar').classList.remove('open');
+        getEl('sidebar-overlay').classList.remove('show');
+      };
+      list.appendChild(item);
+    });
+    group.appendChild(list);
+    bar.appendChild(group);
+  });
+}
+
+function updateSidebarStates() {
+  // Update step item statuses (completed/current/upcoming)
+  PHASES.forEach(ph => {
+    ph.ids.forEach(id => {
+      const item = getEl('dot-' + id);
+      if (!item) return;
+      item.classList.remove('completed', 'current', 'upcoming',
+        'intro', 'data', 'forward', 'loss', 'backward', 'update');
+      if (id < currentStep) item.classList.add('completed');
+      else if (id === currentStep) {
+        item.classList.add('current');
+        item.classList.add(ph.cls);
+        // Auto-expand the current phase if collapsed
+        const phaseIdx = PHASES.indexOf(ph);
+        const group = getEl('phase-group-' + phaseIdx);
+        if (group) group.classList.add('expanded');
+      } else item.classList.add('upcoming');
+    });
+  });
+
+  // Update progress bar
+  const total = steps.length;
+  const fill = ((currentStep + 1) / total) * 100;
+  getEl('sidebar-progress-fill').style.width = fill + '%';
+  getEl('sidebar-progress-text').textContent = `Step ${currentStep + 1} of ${total}`;
+}
+
+function renderStep() {
+  state = computeAll(parseFloat(getEl('x-slider').value));
+  steps = getSteps(state);
+
+  const step = steps[currentStep];
+
+  // toggle mountain vs network view + slider visibility
+  const isIntro = step.phase === 'intro';
+  getEl('mountain-wrap').style.display = isIntro ? 'block' : 'none';
+  getEl('network-wrap').style.display = isIntro ? 'none' : 'block';
+  getEl('slider-group').style.display = isIntro ? 'none' : 'flex';
+
+  // sidebar step states (completed / current / upcoming)
+  updateSidebarStates();
+
+  // title
+  getEl('step-title').innerHTML =
+    `<span class="phase-tag ${step.phase}">${{intro:'intro',data:'data preparation',forward:'forward propagation',loss:'loss',backward:'backward propagation',update:'update weights'}[step.phase]}</span> ${step.title}`;
+
+  // formula card
+  const fc = getEl('formula-card');
+  fc.className = 'card card-formula ' + step.phase;
+  getEl('formula-box').className = 'formula-box ' + step.phase;
+  getEl('formula-box').textContent = step.formula;
+  getEl('calc-block').innerHTML = step.calc;
+
+  // explain card
+  getEl('explain-content').innerHTML = step.explain;
+
+  // reference card (only on backward steps that need it)
+  if (step.ref) {
+    getEl('ref-content').innerHTML = step.ref;
+    getEl('info-grid').classList.add('with-ref');
+  } else {
+    getEl('info-grid').classList.remove('with-ref');
+  }
+
+  // counter
+  getEl('step-counter').textContent = `${currentStep + 1} / ${steps.length}`;
+
+  // buttons
+  getEl('btn-prev').disabled = currentStep === 0;
+  getEl('btn-next').disabled = currentStep === steps.length - 1;
+
+  // render SVG
+  step.render(state);
+}
+
+function goStep(dir) {
+  currentStep = Math.max(0, Math.min(steps.length - 1, currentStep + dir));
+  renderStep();
+}
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 8: EVENT HANDLERS
+// ════════════════════════════════════════════════════════════════
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goStep(1); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goStep(-1); }
+  if (e.key === 'Home') { e.preventDefault(); currentStep = 0; renderStep(); }
+  if (e.key === 'End') { e.preventDefault(); currentStep = steps.length - 1; renderStep(); }
+});
+
+getEl('x-slider').addEventListener('input', function() {
+  getEl('x-val').textContent = '$' + (parseFloat(this.value) * 50 + 50).toFixed(0) + 'k';
+  getEl('y-true-val').textContent = '$' + (Math.sin(2 * Math.PI * parseFloat(this.value)) * 50 + 50).toFixed(0) + 'k';
+  renderStep();
+});
+
+// ════════════════════════════════════════════════════════════════
+// SECTION 9: INIT
+// ════════════════════════════════════════════════════════════════
+
+buildSVG();
+buildStepBar();
+renderStep();
+
+// Wire up the Reset Layout button (after SVG is built)
+getEl('reset-layout-btn').addEventListener('click', () => { resetLayout(); renderStep(); });
+
+// Mobile sidebar toggle
+getEl('mobile-menu-btn').addEventListener('click', () => {
+  getEl('sidebar').classList.add('open');
+  getEl('sidebar-overlay').classList.add('show');
+});
+getEl('sidebar-close').addEventListener('click', () => {
+  getEl('sidebar').classList.remove('open');
+  getEl('sidebar-overlay').classList.remove('show');
+});
+getEl('sidebar-overlay').addEventListener('click', () => {
+  getEl('sidebar').classList.remove('open');
+  getEl('sidebar-overlay').classList.remove('show');
+});
+</script>
+</body>
+</html>
