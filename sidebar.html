@@ -346,6 +346,14 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 }
 .formula-box .katex { font-size: 1.05em; }
 .formula-box .katex-display { margin: 4px 0; }
+.formula-caption {
+  font-size: .8rem;
+  color: var(--gray-dark);
+  font-style: italic;
+  line-height: 1.45;
+  margin: -2px 4px 10px 4px;
+}
+.formula-caption strong { color: var(--text); font-style: normal; font-weight: 700; }
 .formula-box.intro { background: #f0fdf4; color: #166534; }
 .formula-box.data { background: #f0fdfa; color: #134e4a; }
 .formula-box.loss { background: #fef2f2; color: #991b1b; }
@@ -534,6 +542,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
     <div class="card card-formula" id="formula-card">
       <h3>Formula &amp; Calculation</h3>
       <div id="formula-box" class="formula-box"></div>
+      <div id="formula-caption" class="formula-caption"></div>
       <div id="calc-block" class="calc-block"></div>
     </div>
     <div class="card card-explain" id="explain-card">
@@ -890,6 +899,7 @@ function getSteps(s) {
 {
   phase: 'intro', title: 'The Challenge: Why Neural Networks?',
   formula: 'Goal: Find the weights AND biases that minimize prediction error',
+  formulaCaption: '<strong>Goal:</strong> Find values for all 22 parameters that make the network\'s predictions as close as possible to the true targets.',
   calc: `The Problem:\n  We have data. We want to predict outcomes.\n  But the relationship between inputs and outputs\n  is complex, nonlinear, and high-dimensional.\n\nThe Approach:\n  A neural network learns by trial and error:\n  1. Make a prediction (forward pass)\n  2. Measure how wrong it is (loss)\n  3. Figure out what to adjust (backpropagation)\n  4. Make small corrections (weight update)\n  5. Repeat thousands of times`,
   explain: `<p><strong>Before we look at any math</strong>, let's understand what a neural network is actually trying to do -- and why it's hard.</p>
 <p>Look at the mountain landscape above. Imagine you're the <span style="color:#ef4444;font-weight:700">red dot</span>, standing on a mountain range <strong>in thick fog</strong>. Your goal: reach the lowest valley. That valley represents the <strong>best possible prediction</strong> your model can make.</p>
@@ -908,6 +918,7 @@ function getSteps(s) {
 {
   phase: 'data', title: 'Data Preparation: Standardization',
   formula: String.raw`$$\text{StandardScaler:}\quad x_{\text{scaled}} = \frac{\text{value} - \mu}{\sigma}`,
+  formulaCaption: '<strong>What it does:</strong> Re-centers each feature to mean 0 and standard deviation 1 so every column is on a comparable scale before training.',
   calc: (() => {
     const xv = parseFloat(fw(s.x));
     const contextVals = [-0.84, -0.54, 0.34, 0.82];
@@ -960,6 +971,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Meet the Network',
   formula: `Ad Spend: $${(s.x*50+50).toFixed(0)}k → x = ${fw(s.x)}    |    Target Revenue: $${(s.yTrue*50+50).toFixed(0)}k → y = ${f4(s.yTrue)}`,
+  formulaCaption: '<strong>What it does:</strong> Architecture overview — shows how one standardized input flows through 3 dense layers to produce a prediction.',
   calc: `Standardized data (from previous step):\n  x = ${fw(s.x)}     (Ad Spend: $${(s.x*50+50).toFixed(0)}k)\n  y_true = ${f4(s.yTrue)}  (Revenue: $${(s.yTrue*50+50).toFixed(0)}k)\n\nNetwork Architecture:\n  Input(1) → Dense(3) → ReLU → Dense(3) → ReLU → Dense(1) → Linear\n  22 learnable parameters (weights + biases)\n\nThe input node receives x = ${fw(s.x)}.\nThe network will transform this through its layers\nto produce a prediction (ŷ).`,
   explain: `<p><strong>How do neural networks work with data?</strong> ANNs work with tabular data (spreadsheets, dataframes) by processing <strong>one row at a time</strong>. Each row's feature values are fed into the input neurons, the network computes a prediction, and the error is used to update the weights. Repeat across all rows for many rounds (epochs), and the network learns the pattern.</p>
 <p>The input node (labeled <strong>x = ${fw(s.x)}</strong>) receives the <em>standardized</em> value we prepared in the previous step. Use the slider to pick a different Ad Spend value and see how the numbers change.</p>
@@ -983,6 +995,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Feed Input Into Network',
   formula: `x = ${fw(s.x)} → enters the input neuron`,
+  formulaCaption: '<strong>What it does:</strong> Places the standardized input value at the input neuron — the starting point of every forward pass.',
   calc: `From our StandardScaler-processed data:\n  Ad Spend: $${(s.x*50+50).toFixed(0)}k → standardized to x = ${fw(s.x)}\n  Revenue:  $${(s.yTrue*50+50).toFixed(0)}k → standardized to y_true = ${f4(s.yTrue)}\n\nThe network receives the standardized x = ${fw(s.x)}\nat the input neuron. Now it will process this value\nthrough its layers to produce a prediction (ŷ).`,
   explain: `<p>We take the standardized feature value <strong>x = ${fw(s.x)}</strong> from our data and feed it into the network's input neuron. This is the starting point of the <strong>forward pass</strong>.</p>
 <p>The network will now multiply this value by different weights, add biases, and apply activation functions — layer by layer — until it produces a prediction at the output.</p>
@@ -999,6 +1012,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Hidden Layer 1: Weighted Sum',
   formula: String.raw`$$z^{[1]}_i = x \cdot W^{[1]}_i + b^{[1]}_i, \quad i \in \{1, 2, 3\}`,
+  formulaCaption: '<strong>What it does:</strong> Multiplies the input by each neuron\'s weight, then adds that neuron\'s bias — produces one "raw score" per Layer 1 neuron.',
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  \\(x\\)         = input value (the standardized row)\n`;
@@ -1041,6 +1055,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Hidden Layer 1: ReLU Activation',
   formula: String.raw`$$a^{[1]}_i = \max(0,\, z^{[1]}_i)`,
+  formulaCaption: '<strong>What it does:</strong> Keeps positive raw scores, replaces negative ones with 0 — adds the non-linearity that lets the network learn complex patterns.',
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  \\(z^{[1]}_i\\) = pre-activation (weighted sum) from previous step\n`;
@@ -1076,6 +1091,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Hidden Layer 2: Weighted Sum',
   formula: String.raw`$$z^{[2]}_j = \sum_i a^{[1]}_i \cdot W^{[2]}_{ij} + b^{[2]}_j`,
+  formulaCaption: '<strong>What it does:</strong> Each Layer 2 neuron takes a weighted sum of ALL Layer 1 activations, then adds its bias — combining signals from every neuron in the previous layer.',
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  \\(a^{[1]}_i\\)  = activation from Layer 1 neuron i (the ReLU output)\n`;
@@ -1133,6 +1149,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Hidden Layer 2: ReLU Activation',
   formula: String.raw`$$a^{[2]}_j = \max(0,\, z^{[2]}_j)`,
+  formulaCaption: '<strong>What it does:</strong> Applies ReLU again — keep positives, zero out negatives. Layer 2 activations then feed into the output layer.',
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  \\(z^{[2]}_j\\) = Layer 2 pre-activation from previous step\n`;
@@ -1169,6 +1186,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Output: Weighted Sum + Linear Activation',
   formula: String.raw`$$z^{[3]} = \sum_i a^{[2]}_i \cdot W^{[3]}_i + b^{[3]} \qquad \hat{y} = f(z^{[3]}) = z^{[3]}\ \ \text{(linear)}`,
+  formulaCaption: '<strong>What it does:</strong> Final weighted sum produces the prediction. Linear activation lets the output be any real number (suitable for regression).',
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  \\(a^{[2]}_i\\) = activation from Layer 2 neuron i (ReLU output)\n`;
@@ -1214,6 +1232,7 @@ function getSteps(s) {
 {
   phase: 'loss', title: 'Loss: Mean Squared Error (MSE)',
   formula: String.raw`$$L_{\text{sample}} = (y_{\text{true}} - \hat{y})^2 \qquad L_{\text{batch}} = \tfrac{1}{N}\textstyle\sum_n L_{\text{sample},n}`,
+  formulaCaption: '<strong>What it does:</strong> Measures how wrong the prediction is — squared so errors are always positive and large mistakes are penalized far more than small ones.',
   calc: `<div class="var-defs">Variable definitions:
   \\(y_{\\text{true}}\\)   = the actual target value (standardized Revenue)
   \\(\\hat{y}\\)        = the network's prediction (standardized)
@@ -1252,6 +1271,7 @@ For a batch of N samples: L = (1/N) × Σ_n L_sample_n`,
 {
   phase: 'backward', title: 'What is Backpropagation?',
   formula: 'Goal: Find the gradient (sensitivity) of the loss with respect to every weight and bias in the network.',
+  formulaCaption: '<strong>What it does:</strong> Sets up the 4-step backward walk. We need a "sensitivity score" for each of the 22 parameters telling us how to nudge it.',
   calc: `THE PROBLEM:
   We have 22 weights and biases. We know the prediction
   was wrong (loss = ${f4(s.loss)}). But which weights are
@@ -1365,6 +1385,7 @@ THE END RESULT:
 {
   phase: 'backward', title: 'Backprop Start: Loss Gradient',
   formula: String.raw`$$\frac{\partial L}{\partial \hat{y}} = -2\,(y_{\text{true}} - \hat{y})`,
+  formulaCaption: '<strong>What it does:</strong> Computes how the loss changes if we nudge the prediction up or down — the starting signal for the entire backward pass.',
   ref: `<div class="ref-section">
     <div class="ref-label">y_true (target)</div>
     <div class="ref-value">${f4(s.yTrue)}</div>
@@ -1427,6 +1448,7 @@ Our companion Python code uses this batch form.`,
 {
   phase: 'backward', title: 'Backprop: Output Layer (Dense 3)',
   formula: String.raw`$$\frac{\partial L}{\partial W^{[3]}_i} = a^{[2]}_i \cdot \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial b^{[3]}} = \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial a^{[2]}_i} = W^{[3]}_i \cdot \frac{\partial L}{\partial \hat{y}}`,
+  formulaCaption: '<strong>What it does:</strong> Computes gradients for the output layer\'s 3 weights and 1 bias, then passes a gradient back to Layer 2 so it can do the same.',
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 2 activations (a^[2]_i)</div>
     <div class="ref-value">a^[2]_1 = ${fc(s.A2[0])}\na^[2]_2 = ${fc(s.A2[1])}\na^[2]_3 = ${fc(s.A2[2])}</div>
@@ -1501,6 +1523,7 @@ Our companion Python code uses this batch form.`,
 {
   phase: 'backward', title: 'Backprop: Through ReLU 2 & Dense Layer 2',
   formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[2]}_j} = \tfrac{\partial L}{\partial a^{[2]}_j} \cdot \mathbb{1}\!\left[z^{[2]}_j > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[2]}_{ij}} = a^{[1]}_i \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[2]}_j} = \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Input:}\quad & \tfrac{\partial L}{\partial a^{[1]}_i} = \textstyle\sum_j W^{[2]}_{ij} \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \end{aligned}`,
+  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 2 (dead neurons block flow), then produces gradients for Layer 2\'s 9 weights + 3 biases, and passes a gradient back to Layer 1.',
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 2 pre-activations (z^[2])</div>
     <div class="ref-value">z^[2]_1 = ${fc(s.Z2[0])}\nz^[2]_2 = ${fc(s.Z2[1])}\nz^[2]_3 = ${fc(s.Z2[2])}</div>
@@ -1593,6 +1616,7 @@ Our companion Python code uses this batch form.`,
 {
   phase: 'backward', title: 'Backprop: Through ReLU 1 & Dense Layer 1',
   formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[1]}_i} = \tfrac{\partial L}{\partial a^{[1]}_i} \cdot \mathbb{1}\!\left[z^{[1]}_i > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[1]}_i} = x \cdot \tfrac{\partial L}{\partial z^{[1]}_i} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[1]}_i} = \tfrac{\partial L}{\partial z^{[1]}_i} \end{aligned}`,
+  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 1, then produces the final 6 parameter gradients (Layer 1\'s 3 weights + 3 biases). All 22 gradients are now ready for the update step.',
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 1 pre-activations (z^[1])</div>
     <div class="ref-value">z^[1]_1 = ${fc(s.Z1[0])}\nz^[1]_2 = ${fc(s.Z1[1])}\nz^[1]_3 = ${fc(s.Z1[2])}</div>
@@ -1663,6 +1687,7 @@ Our companion Python code uses this batch form.`,
 {
   phase: 'update', title: 'Weight & Bias Update',
   formula: String.raw`$$W_{\text{new}} = W_{\text{old}} - \eta \cdot \frac{\partial L}{\partial W} \qquad b_{\text{new}} = b_{\text{old}} - \eta \cdot \frac{\partial L}{\partial b} \qquad (\eta = ` + LR + String.raw`)`,
+  formulaCaption: '<strong>What it does:</strong> Nudges every weight and bias a tiny step in the OPPOSITE direction of its gradient — i.e., downhill on the loss surface. This is one training step.',
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  \\(W_{\\text{old}} / b_{\\text{old}}\\) = current weight/bias values (BEFORE update)\n`;
@@ -1971,6 +1996,15 @@ function renderStep() {
     }
   } else {
     fbox.textContent = step.formula;
+  }
+  // Formula caption — short one-liner explaining what the formula does
+  const captionEl = getEl('formula-caption');
+  if (step.formulaCaption) {
+    captionEl.innerHTML = step.formulaCaption;
+    captionEl.style.display = '';
+  } else {
+    captionEl.innerHTML = '';
+    captionEl.style.display = 'none';
   }
   const calcBlock = getEl('calc-block');
   calcBlock.innerHTML = step.calc;
