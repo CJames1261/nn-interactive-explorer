@@ -867,11 +867,11 @@ function resetLayout() {
 // SECTION 5: STEP DEFINITIONS
 // ════════════════════════════════════════════════════════════════
 
-// fw = format WEIGHT/KNOWN value (2dp — these are exact constants)
-// fc = format COMPUTED value (4dp — products, sums, activations)
+// fw = format WEIGHT/CONFIG value (2dp — weights, biases, slider x)
+// fc = format COMPUTED value (4dp — activations, gradients, predictions, loss)
+// All computed values use 4dp consistently across SVG and calc blocks.
 function fw(v) { return v.toFixed(2); }
 function fc(v) { return v.toFixed(4); }
-function f3(v) { return v.toFixed(3); }
 function f4(v) { return v.toFixed(4); }
 function sign(v) { return v >= 0 ? '+' : ''; }
 
@@ -1184,9 +1184,9 @@ function getSteps(s) {
     return t;
   })(),
   explain: `<p>The single output neuron computes another weighted sum, then applies a <strong>Linear activation</strong> — just the identity function f(z) = z. The activation doesn't change the value; it's there for symmetry with hidden layers.</p>
-<p>Our predicted Revenue: <strong>ŷ = ${f3(s.yPred)}</strong></p>
+<p>Our predicted Revenue: <strong>ŷ = ${fc(s.yPred)}</strong></p>
 <p>The actual Revenue from our data: <strong>y = ${f4(s.yTrue)}</strong></p>
-<p>How far off: ${f3(s.yPred)} - ${f4(s.yTrue)} = <strong>${f3(s.yPred - s.yTrue)}</strong></p>
+<p>How far off: ${fc(s.yPred)} - ${f4(s.yTrue)} = <strong>${fc(s.yPred - s.yTrue)}</strong></p>
 <p><strong>Why linear and not sigmoid/ReLU on the output?</strong> Regression targets can be any real number — house prices, temperatures, revenues. If we used sigmoid (squashes to [0, 1]) the network couldn't predict negative or large values. If we used ReLU, it couldn't predict anything negative. Linear lets ŷ be any real number, matching the unbounded nature of the target.</p>
 <div class="key-insight"><strong>Classification vs Regression:</strong> Classification uses <strong>Softmax</strong> to squeeze outputs into probabilities [0, 1]. Regression uses <strong>Linear</strong> to allow any real number — the network can predict any value, positive or negative.</div>`,
   render(s) {
@@ -1217,7 +1217,7 @@ function getSteps(s) {
 ─── Calculation (one sample) ───
 
 L_sample = (y_true - ŷ)²
-         = (${f4(s.yTrue)} - ${f3(s.yPred)})²
+         = (${f4(s.yTrue)} - ${fc(s.yPred)})²
          = (${f4(s.yTrue - s.yPred)})²
          = <span class="result">${f4(s.loss)}</span>
 
@@ -1231,7 +1231,7 @@ For a batch of N samples: L = (1/N) × Σ_n L_sample_n`,
 <div class="key-insight"><strong>What comes next:</strong> We know the error. Now we need to figure out <strong>which of the 22 weights to blame</strong> for it and <strong>how much to adjust each one</strong>. That's what backpropagation does -- it's like a sensitivity analysis that traces the error back to each individual parameter.</div>`,
   render(s) {
     dimAll();
-    activateNode(3, 0, 'active-fwd', 'ŷ', f3(s.yPred));
+    activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
     getEl('e-loss').className.baseVal = 'edge flow-fwd';
     getEl('c-loss').setAttribute('stroke', 'var(--red)');
     getEl('c-loss').setAttribute('fill', 'var(--red-light)');
@@ -1309,7 +1309,7 @@ THE END RESULT:
   </div>
   <div class="ref-section">
     <div class="ref-label">ŷ (prediction)</div>
-    <div class="ref-value">${f3(s.yPred)}</div>
+    <div class="ref-value">${fc(s.yPred)}</div>
     <div class="ref-source">from Step 8: Output Layer (forward)</div>
   </div>
   <div class="ref-section">
@@ -1335,9 +1335,9 @@ THE END RESULT:
 ─── Calculation (one sample) ───
 
 ∂L_sample/∂ŷ = -2 × (y_true - ŷ)
-             = -2 × (${f4(s.yTrue)} - ${f3(s.yPred)})
+             = -2 × (${f4(s.yTrue)} - ${fc(s.yPred)})
              = -2 × (${f4(s.yTrue - s.yPred)})
-             = <span class="result">${f3(s.dLdy)}</span>
+             = <span class="result">${fc(s.dLdy)}</span>
 
 ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!'}
 
@@ -1346,17 +1346,17 @@ Batch note: with N samples and J outputs, the gradient is
 The /(N × J) keeps gradient magnitude independent of batch size.
 Our companion Python code uses this batch form.`,
   explain: `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. The symbol <strong>∂</strong> means "partial derivative" — the slope of L with respect to ŷ, holding everything else fixed. Think of it like a <em>marginal effect</em> in statistics — the rate of change.</p>
-<p>Here, ∂L/∂ŷ = <strong>${f3(s.dLdy)}</strong>. For a <em>tiny</em> nudge to ŷ, the loss changes proportionally to ${f3(Math.abs(s.dLdy))}. (Larger jumps overshoot because the loss is curved, not straight.) ${s.dLdy > 0 ? 'The gradient is <strong>positive</strong>, so increasing ŷ would make things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'The gradient is <strong>negative</strong>, so increasing ŷ would actually reduce the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero — our prediction is perfect!'}</p>
+<p>Here, ∂L/∂ŷ = <strong>${fc(s.dLdy)}</strong>. For a <em>tiny</em> nudge to ŷ, the loss changes proportionally to ${fc(Math.abs(s.dLdy))}. (Larger jumps overshoot because the loss is curved, not straight.) ${s.dLdy > 0 ? 'The gradient is <strong>positive</strong>, so increasing ŷ would make things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'The gradient is <strong>negative</strong>, so increasing ŷ would actually reduce the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero — our prediction is perfect!'}</p>
 <p><strong>Why do we care?</strong> This single number launches the entire backward pass. It's the starting signal that will flow through every layer, telling each weight: "Here's how much you personally contributed to the error, and which direction to change."</p>
-<div class="key-insight"><strong>🏔️ Mountain analogy:</strong> Remember the fog? You can't see the whole landscape, but you <em>can</em> feel the slope under your feet -- that's exactly what this derivative is. Positive slope (${f3(s.dLdy)} ${s.dLdy > 0 ? '> 0' : s.dLdy < 0 ? '< 0' : '= 0'})? ${s.dLdy > 0 ? 'You\'re going uphill -- turn around.' : s.dLdy < 0 ? 'You\'re heading downhill -- keep going.' : 'Flat ground -- you might be at the bottom!'} Backpropagation (next steps) will feel the slope for <strong>every weight simultaneously</strong> -- like having 22 altimeters, one per parameter.</div>`,
+<div class="key-insight"><strong>🏔️ Mountain analogy:</strong> Remember the fog? You can't see the whole landscape, but you <em>can</em> feel the slope under your feet -- that's exactly what this derivative is. Positive slope (${fc(s.dLdy)} ${s.dLdy > 0 ? '> 0' : s.dLdy < 0 ? '< 0' : '= 0'})? ${s.dLdy > 0 ? 'You\'re going uphill -- turn around.' : s.dLdy < 0 ? 'You\'re heading downhill -- keep going.' : 'Flat ground -- you might be at the bottom!'} Backpropagation (next steps) will feel the slope for <strong>every weight simultaneously</strong> -- like having 22 altimeters, one per parameter.</div>`,
   render(s) {
     dimAll();
-    activateNode(3, 0, 'active-bwd', 'ŷ', f3(s.yPred));
+    activateNode(3, 0, 'active-bwd', 'ŷ', fc(s.yPred));
     getEl('e-loss').className.baseVal = 'edge flow-bwd';
     getEl('c-loss').setAttribute('stroke', 'var(--red)');
     getEl('c-loss').setAttribute('fill', 'var(--red-light)');
     getEl('lbl-loss').textContent = '∂L';
-    getEl('val-loss').textContent = f3(s.dLdy);
+    getEl('val-loss').textContent = fc(s.dLdy);
   }
 },
 
@@ -1376,7 +1376,7 @@ Our companion Python code uses this batch form.`,
   </div>
   <div class="ref-section">
     <div class="ref-label">Incoming gradient</div>
-    <div class="ref-value">∂L/∂ŷ = ${f3(s.dLdy)}</div>
+    <div class="ref-value">∂L/∂ŷ = ${fc(s.dLdy)}</div>
     <div class="ref-source">from Step 11: Loss Gradient (backward)</div>
   </div>
   <div class="ref-section">
@@ -1391,7 +1391,7 @@ Our companion Python code uses this batch form.`,
     t += `  ∂L/∂ŷ        = incoming gradient from previous step (loss gradient)\n`;
     t += `  ∂L/∂W^[3]_i  = sensitivity of loss to weight W^[3]_i (output)\n`;
     t += `  ∂L/∂a^[2]_i  = gradient passed BACK to Layer 2 (for next step)</div>\n`;
-    t += `Incoming gradient: ∂L/∂ŷ = ${f3(s.dLdy)}\n\n`;
+    t += `Incoming gradient: ∂L/∂ŷ = ${fc(s.dLdy)}\n\n`;
     t += `Linear activation backward — derive WHY it passes through:\n`;
     t += `  Forward: ŷ = f(z^[3]) = z^[3]   (identity function)\n`;
     t += `  Derivative: df/dz = 1\n`;
@@ -1422,14 +1422,14 @@ Our companion Python code uses this batch form.`,
 <p><strong>∂L/∂W₃ (weight sensitivity)</strong> -- "How much does each weight contribute to the error?" This is like computing the <em>variable importance</em> for each connection. A weight connected to a highly active neuron gets a large gradient because it had a big influence on the prediction.</p>
 <p><strong>∂L/∂b₃ (bias sensitivity)</strong> -- "How much does the bias contribute?" The bias shifts the entire output, so its gradient equals the incoming signal directly.</p>
 <p><strong>∂L/∂A₂ (passed backward)</strong> -- "How much did each Layer 2 neuron contribute to the error?" These gradients get sent to the previous layer so it can do the same analysis. Think of it as <em>passing the blame upstream</em>.</p>
-<div class="key-insight"><strong>Dead neuron = zero influence:</strong> Neuron 2 in Layer 2 output a₂ = 0 (killed by ReLU). Its weight gradient is 0 x ${f3(s.dLdy)} = 0. In data science terms, this is like a variable with <strong>zero variance</strong> -- it can't explain anything, so its coefficient can't be updated. The weight <strong>won't change</strong> this round.</div>`,
+<div class="key-insight"><strong>Dead neuron = zero influence:</strong> Neuron 2 in Layer 2 output a₂ = 0 (killed by ReLU). Its weight gradient is 0 x ${fc(s.dLdy)} = 0. In data science terms, this is like a variable with <strong>zero variance</strong> -- it can't explain anything, so its coefficient can't be updated. The weight <strong>won't change</strong> this round.</div>`,
   render(s) {
     dimAll();
-    activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', f3(s.dLdy));
+    activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', fc(s.dLdy));
     for (let i = 0; i < 3; i++) {
-      activateNode(2, i, 'active-bwd', '∂L/∂a', f3(s.dA2[i]));
+      activateNode(2, i, 'active-bwd', '∂L/∂a', fc(s.dA2[i]));
       activateEdge(2, i, 0, 'flow-bwd');
-      showWeight(2, i, 0, '∂w='+f3(s.dW3[i]));
+      showWeight(2, i, 0, '∂w='+fc(s.dW3[i]));
     }
   }
 },
