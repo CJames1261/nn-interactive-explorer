@@ -867,12 +867,13 @@ function resetLayout() {
 // SECTION 5: STEP DEFINITIONS
 // ════════════════════════════════════════════════════════════════
 
-// fw = format WEIGHT/CONFIG value (2dp — weights, biases, slider x)
-// fc = format COMPUTED value (4dp — activations, gradients, predictions, loss)
-// All computed values use 4dp consistently across SVG and calc blocks.
+// fw, fc, f4 all use 2 decimal places for visual consistency.
+// Weights, biases, activations, pre-activations, predictions, gradients,
+// and loss — all rounded to 2dp across the SVG visualization AND the
+// calc blocks. Same number visible in both places.
 function fw(v) { return v.toFixed(2); }
-function fc(v) { return v.toFixed(4); }
-function f4(v) { return v.toFixed(4); }
+function fc(v) { return v.toFixed(2); }
+function f4(v) { return v.toFixed(2); }
 function sign(v) { return v >= 0 ? '+' : ''; }
 
 function getSteps(s) {
@@ -1480,7 +1481,7 @@ Our companion Python code uses this batch form.`,
       const aliveA = s.A1[i] > 0;
       const tag = aliveA
         ? `a^[1]_${i+1} = ${fc(s.A1[i])}  ✓ ALIVE`
-        : `a^[1]_${i+1} = 0.0000  ✗ DEAD (killed by ReLU — all W^[2]_${i}j gradients = 0)`;
+        : `a^[1]_${i+1} = 0.00  ✗ DEAD (killed by ReLU — all W^[2]_${i}j gradients = 0)`;
       const cls = aliveA ? 'alive' : 'dead';
       t += `<span class="${cls}">─── Layer 1 neuron ${i+1}:  ${tag} ───</span>\n`;
       for (let j = 0; j < 3; j++) {
