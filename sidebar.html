@@ -1212,7 +1212,7 @@ function getSteps(s) {
   explain: `<p>The single output neuron computes another weighted sum, then applies a <strong>Linear activation</strong> — just the identity function f(z) = z. The activation doesn't change the value; it's there for symmetry with hidden layers.</p>
 <p>Our predicted Revenue: <strong>ŷ = ${fc(s.yPred)}</strong></p>
 <p>The actual Revenue from our data: <strong>y = ${f4(s.yTrue)}</strong></p>
-<p>How far off: ${fc(s.yPred)} - ${f4(s.yTrue)} = <strong>${fc(s.yPred - s.yTrue)}</strong></p>
+<p>How far off (residual): \\(y_{\\text{true}} - \\hat{y}\\) = ${f4(s.yTrue)} - ${fc(s.yPred)} = <strong>${fc(s.yTrue - s.yPred)}</strong></p>
 <p><strong>Why linear and not sigmoid/ReLU on the output?</strong> Regression targets can be any real number — house prices, temperatures, revenues. If we used sigmoid (squashes to [0, 1]) the network couldn't predict negative or large values. If we used ReLU, it couldn't predict anything negative. Linear lets ŷ be any real number, matching the unbounded nature of the target.</p>
 <div class="key-insight"><strong>Classification vs Regression:</strong> Classification uses <strong>Softmax</strong> to squeeze outputs into probabilities [0, 1]. Regression uses <strong>Linear</strong> to allow any real number — the network can predict any value, positive or negative.</div>`,
   render(s) {
@@ -1403,7 +1403,7 @@ THE END RESULT:
   </div>
   <div class="ref-section">
     <div class="ref-label">Where used</div>
-    <div class="ref-value">\(\partial L / \partial \hat{y} = -2(y_{\text{true}} - \hat{y})\)</div>
+    <div class="ref-value">\\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y})\\)</div>
   </div>`,
   calc: `<div class="var-defs">Variable definitions:
   \\(\\partial L / \\partial \\hat{y}\\)  = "sensitivity score" — how loss changes when ŷ changes
