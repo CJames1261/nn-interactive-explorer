@@ -1545,7 +1545,8 @@ function buildStepBar() {
   bar.innerHTML = '';
   PHASES.forEach((ph, phIdx) => {
     const group = document.createElement('div');
-    group.className = 'phase-group expanded';
+    // Only the Intro phase starts expanded; all others collapsed but clickable
+    group.className = 'phase-group' + (phIdx === 0 ? ' expanded' : '');
     group.id = 'phase-group-' + phIdx;
 
     const header = document.createElement('div');
@@ -1604,10 +1605,6 @@ function updateSidebarStates() {
         item.classList.add('upcoming');
         if (id === nextStepId) {
           item.classList.add('next-up');
-          // Auto-expand the phase that contains the next step too
-          const phaseIdx = PHASES.indexOf(ph);
-          const group = getEl('phase-group-' + phaseIdx);
-          if (group) group.classList.add('expanded');
         }
       }
     });
