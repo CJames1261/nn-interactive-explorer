@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UI/UX Prototypes — NN Interactive Explorer</title>
+<style>
+:root {
+  --blue: #3b82f6; --blue-light: #dbeafe; --blue-dark: #1d4ed8;
+  --orange: #f97316; --orange-light: #ffedd5;
+  --green: #22c55e; --green-light: #dcfce7;
+  --red: #ef4444; --red-light: #fee2e2;
+  --purple: #8b5cf6; --purple-light: #ede9fe;
+  --teal: #0d9488; --teal-light: #ccfbf1;
+  --gray: #6b7280; --gray-light: #f3f4f6; --gray-dark: #374151;
+  --text: #1f2937; --bg: #ffffff; --card-bg: #f9fafb;
+  --border: #e5e7eb;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.05), 0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,.08), 0 4px 10px rgba(0,0,0,.04);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, sans-serif;
+  color: var(--text); background: #f5f7fb;
+  min-height: 100vh; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: "Consolas", "Fira Code", "JetBrains Mono", monospace; }
+
+/* ═══ PROTOTYPE PICKER (top bar) ═══ */
+.picker-bar {
+  background: white; border-bottom: 1px solid var(--border);
+  padding: 14px 24px; box-shadow: var(--shadow-sm);
+  position: sticky; top: 0; z-index: 100;
+}
+.picker-title {
+  font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 4px;
+}
+.picker-subtitle {
+  font-size: .8rem; color: var(--gray); margin-bottom: 10px;
+}
+.picker-tabs {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.picker-tab {
+  padding: 8px 14px; border: 1px solid var(--border); background: white;
+  border-radius: 8px; font-size: .82rem; font-weight: 500; cursor: pointer;
+  color: var(--text); transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.picker-tab:hover { border-color: var(--blue); color: var(--blue); }
+.picker-tab.active {
+  background: var(--text); color: white; border-color: var(--text);
+}
+.picker-tab .num {
+  font-size: .7rem; opacity: .6; font-weight: 700;
+}
+
+.proto-frame {
+  max-width: 1400px; margin: 24px auto; background: white;
+  border-radius: 16px; box-shadow: var(--shadow-lg);
+  overflow: hidden; min-height: 700px;
+}
+.proto { display: none; }
+.proto.active { display: block; }
+
+.proto-meta {
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+}
+.proto-meta h2 {
+  font-size: 1.1rem; font-weight: 700; margin-bottom: 4px;
+}
+.proto-meta p {
+  font-size: .82rem; color: var(--gray);
+}
+.proto-meta .pros-cons {
+  display: flex; gap: 16px; margin-top: 8px; font-size: .75rem;
+}
+.proto-meta .pros { color: #059669; }
+.proto-meta .cons { color: #dc2626; }
+
+/* ═══ SHARED COMPONENTS ═══ */
+.viz-placeholder {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border: 1px dashed #d1d5db; border-radius: 12px;
+  padding: 16px; min-height: 220px; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.viz-placeholder svg { width: 100%; max-height: 240px; }
+
+.fake-node {
+  fill: white; stroke-width: 2.5; r: 22;
+}
+.fake-node.in { stroke: var(--blue); fill: var(--blue-light); }
+.fake-node.h { stroke: var(--blue); fill: var(--blue-light); }
+.fake-node.h.dead { stroke: var(--red); fill: var(--red-light); }
+.fake-node.out { stroke: #9ca3af; fill: white; }
+.fake-edge { stroke: var(--blue); stroke-width: 2; opacity: .8; stroke-dasharray: 8 4; }
+.fake-edge.dead { stroke: var(--red); stroke-dasharray: 4 4; opacity: .6; }
+.fake-edge.dim { stroke: #d1d5db; stroke-width: 1; }
+.fake-label { font-size: 10px; fill: var(--text); font-weight: 600; text-anchor: middle; }
+.fake-val { font-family: "Consolas", monospace; font-size: 9px; fill: var(--gray-dark); text-anchor: middle; }
+
+.formula-box {
+  background: var(--blue-light); padding: 10px 14px; border-radius: 8px;
+  font-family: "Consolas", monospace; font-size: .85rem; color: var(--blue-dark);
+  margin-bottom: 10px;
+}
+.calc-block {
+  font-family: "Consolas", monospace; font-size: .76rem;
+  line-height: 1.7; color: var(--text); white-space: pre-wrap;
+}
+.explain-block {
+  font-size: .85rem; color: var(--gray-dark); line-height: 1.6;
+}
+.explain-block p { margin-bottom: 8px; }
+.explain-block strong { color: var(--text); }
+
+.card {
+  background: var(--card-bg); border-radius: 10px; padding: 14px 16px;
+  border-left: 3px solid var(--blue);
+}
+.card h3 {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--gray); margin-bottom: 8px; font-weight: 700;
+}
+
+.btn {
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+  background: white; cursor: pointer; font-size: .85rem; font-weight: 600;
+  color: var(--text); transition: all .15s;
+}
+.btn:hover { border-color: var(--blue); color: var(--blue); }
+.btn.primary {
+  background: var(--blue); color: white; border-color: var(--blue);
+}
+.btn.primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
+
+.phase-tag {
+  display: inline-block; padding: 3px 10px; border-radius: 12px;
+  font-size: .65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.phase-tag.forward { background: var(--blue-light); color: var(--blue-dark); }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* PROTOTYPE 1: SIDEBAR NAVIGATION                                 */
+/* ═══════════════════════════════════════════════════════════════ */
+.p1-layout {
+  display: grid; grid-template-columns: 240px 1fr;
+  min-height: 700px;
+}
+.p1-sidebar {
+  background: #fafbfc; border-right: 1px solid var(--border);
+  padding: 16px 0; overflow-y: auto;
+}
+.p1-phase-group { margin-bottom: 4px; }
+.p1-phase-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; cursor: pointer;
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--gray); font-weight: 700;
+}
+.p1-phase-header .chevron {
+  transition: transform .2s;
+}
+.p1-phase-group.expanded .p1-phase-header .chevron {
+  transform: rotate(90deg);
+}
+.p1-step-list {
+  display: none; padding-left: 8px;
+}
+.p1-phase-group.expanded .p1-step-list { display: block; }
+.p1-step {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px 7px 28px; font-size: .82rem;
+  color: var(--text); cursor: pointer; border-left: 2px solid transparent;
+  transition: all .15s;
+}
+.p1-step:hover { background: #f0f4ff; }
+.p1-step.completed { color: var(--gray); }
+.p1-step.completed::before { content: "✓"; color: var(--green); font-weight: 700; }
+.p1-step.upcoming::before { content: "○"; color: #d1d5db; }
+.p1-step.current {
+  background: var(--blue-light); color: var(--blue-dark); font-weight: 600;
+  border-left-color: var(--blue);
+}
+.p1-step.current::before { content: "▸"; color: var(--blue); font-weight: 700; }
+.p1-main { padding: 24px; }
+.p1-main-header { margin-bottom: 16px; }
+.p1-main-header h1 { font-size: 1.4rem; font-weight: 700; margin-top: 6px; }
+.p1-content {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+}
+.p1-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* PROTOTYPE 2: SCROLL STORY                                       */
+/* ═══════════════════════════════════════════════════════════════ */
+.p2-progress {
+  background: white; padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+.p2-progress-bar {
+  height: 4px; background: var(--gray-light); border-radius: 2px;
+  margin-top: 8px; overflow: hidden;
+}
+.p2-progress-fill {
+  height: 100%; width: 35%; background: var(--blue);
+  border-radius: 2px; transition: width .3s;
+}
+.p2-progress-text {
+  font-size: .75rem; color: var(--gray); display: flex; justify-content: space-between;
+}
+.p2-progress-text strong { color: var(--text); }
+.p2-layout {
+  display: grid; grid-template-columns: 1fr 1fr;
+  max-width: 1200px; margin: 0 auto;
+}
+.p2-sticky {
+  position: sticky; top: 100px; align-self: start;
+  padding: 24px; height: 480px;
+}
+.p2-content { padding: 24px; }
+.p2-section {
+  padding: 30px 0; border-bottom: 1px solid var(--border);
+  min-height: 300px;
+}
+.p2-section:last-child { border-bottom: none; }
+.p2-section h2 {
+  font-size: 1.3rem; font-weight: 700; margin-bottom: 6px;
+}
+.p2-section h2 .step-num {
+  display: inline-block; background: var(--blue); color: white;
+  font-size: .7rem; padding: 2px 8px; border-radius: 12px;
+  margin-right: 8px; vertical-align: middle;
+}
+.p2-section .formula-box { margin: 14px 0; }
+.p2-section .explain-block { margin-top: 10px; }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* PROTOTYPE 3: CARD DECK                                          */
+/* ═══════════════════════════════════════════════════════════════ */
+.p3-layout {
+  display: flex; flex-direction: column; min-height: 700px; background: #1a1f2e;
+  color: white;
+}
+.p3-top {
+  background: rgba(255,255,255,.04); padding: 14px 24px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.p3-progress-bar {
+  height: 3px; background: rgba(255,255,255,.1); border-radius: 2px;
+  display: flex; gap: 3px; margin-top: 8px;
+}
+.p3-progress-segment {
+  flex: 1; background: rgba(255,255,255,.15); border-radius: 2px;
+}
+.p3-progress-segment.done { background: var(--blue); }
+.p3-progress-segment.current {
+  background: linear-gradient(to right, var(--blue) 50%, rgba(255,255,255,.15) 50%);
+}
+.p3-phase-info {
+  font-size: .75rem; color: rgba(255,255,255,.7);
+  display: flex; justify-content: space-between;
+}
+.p3-phase-info strong { color: white; }
+.p3-viz-area {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 32px; min-height: 320px;
+}
+.p3-viz-area .viz-placeholder {
+  background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.15);
+  width: 100%; max-width: 700px;
+}
+.p3-drawer {
+  background: white; color: var(--text); padding: 20px 24px;
+  border-radius: 16px 16px 0 0; box-shadow: 0 -8px 25px rgba(0,0,0,.3);
+}
+.p3-drawer-handle {
+  width: 40px; height: 4px; background: #d1d5db;
+  border-radius: 2px; margin: 0 auto 12px;
+}
+.p3-drawer-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px;
+}
+.p3-drawer-header h2 { font-size: 1.05rem; font-weight: 700; }
+.p3-drawer-header .step-counter {
+  font-size: .75rem; color: var(--gray); font-weight: 600;
+}
+.p3-drawer .formula-box { margin: 10px 0; }
+.p3-drawer .explain-block { font-size: .82rem; }
+.p3-drawer-controls {
+  display: flex; justify-content: space-between; gap: 12px; margin-top: 14px;
+}
+.p3-drawer-controls .btn { flex: 1; }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* PROTOTYPE 4: VISUAL JOURNEY MAP                                 */
+/* ═══════════════════════════════════════════════════════════════ */
+.p4-layout {
+  padding: 32px;
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  min-height: 700px;
+}
+.p4-header {
+  text-align: center; margin-bottom: 28px;
+}
+.p4-header h1 {
+  font-size: 1.6rem; font-weight: 700; margin-bottom: 6px;
+}
+.p4-header p { color: var(--gray); font-size: .9rem; }
+.p4-cta {
+  display: inline-block; margin-top: 14px;
+  padding: 10px 20px; background: var(--blue); color: white;
+  border-radius: 8px; font-weight: 600; font-size: .9rem;
+  box-shadow: var(--shadow-md);
+}
+.p4-map {
+  max-width: 900px; margin: 0 auto; position: relative;
+}
+.p4-phase {
+  background: white; border-radius: 14px; padding: 16px;
+  box-shadow: var(--shadow-md); margin-bottom: 18px;
+  position: relative;
+}
+.p4-phase.is-current {
+  border: 2px solid var(--blue);
+  box-shadow: 0 0 0 4px var(--blue-light), var(--shadow-lg);
+}
+.p4-phase.is-done { opacity: .85; }
+.p4-phase-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px;
+}
+.p4-phase-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: white; font-size: .85rem;
+}
+.p4-phase-icon.intro { background: var(--green); }
+.p4-phase-icon.data { background: var(--teal); }
+.p4-phase-icon.forward { background: var(--blue); }
+.p4-phase-icon.loss { background: var(--red); }
+.p4-phase-icon.backward { background: var(--orange); }
+.p4-phase-icon.update { background: var(--purple); }
+.p4-phase-name { font-weight: 700; font-size: 1rem; }
+.p4-phase-meta { font-size: .72rem; color: var(--gray); margin-left: auto; }
+.p4-step-row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.p4-step-node {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid var(--border); background: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; font-weight: 700; color: var(--gray);
+  cursor: pointer; transition: all .15s;
+}
+.p4-step-node:hover { transform: scale(1.1); }
+.p4-step-node.done {
+  background: var(--green); color: white; border-color: var(--green);
+}
+.p4-step-node.current {
+  background: var(--blue); color: white; border-color: var(--blue);
+  transform: scale(1.15); box-shadow: 0 0 0 4px var(--blue-light);
+}
+.p4-arrow {
+  text-align: center; color: #cbd5e1; font-size: 1.4rem;
+  margin: -6px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* PROTOTYPE 5: TABBED PHASE NAVIGATION                            */
+/* ═══════════════════════════════════════════════════════════════ */
+.p5-tabs {
+  display: flex; border-bottom: 2px solid var(--border);
+  background: white; padding: 0 16px;
+}
+.p5-tab {
+  padding: 14px 20px; cursor: pointer; font-size: .85rem;
+  font-weight: 600; color: var(--gray);
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all .15s; display: flex; align-items: center; gap: 8px;
+}
+.p5-tab:hover { color: var(--text); }
+.p5-tab.active {
+  color: var(--blue); border-bottom-color: var(--blue);
+}
+.p5-tab .indicator {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #d1d5db;
+}
+.p5-tab.done .indicator { background: var(--green); }
+.p5-tab.active .indicator { background: var(--blue); }
+.p5-substeps {
+  background: #f8fafc; padding: 14px 24px;
+  display: flex; align-items: center; gap: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.p5-substep-dots {
+  display: flex; gap: 8px;
+}
+.p5-substep-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: white; border: 2px solid #d1d5db;
+}
+.p5-substep-dot.done { background: var(--green); border-color: var(--green); }
+.p5-substep-dot.current {
+  background: var(--blue); border-color: var(--blue);
+  transform: scale(1.4);
+}
+.p5-substep-label {
+  font-size: .85rem; font-weight: 600;
+}
+.p5-substep-label .step-counter {
+  color: var(--gray); margin-left: 8px; font-weight: 500; font-size: .8rem;
+}
+.p5-body {
+  padding: 24px;
+}
+.p5-content {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;
+}
+.p5-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<div class="picker-bar">
+  <div class="picker-title">UI/UX Prototypes — Neural Network Interactive Explorer</div>
+  <div class="picker-subtitle">Click each tab to compare different navigation patterns. Each shows the same step (Hidden Layer 1: Weighted Sum) for fair comparison.</div>
+  <div class="picker-tabs">
+    <button class="picker-tab active" data-proto="p1"><span class="num">01</span> Sidebar Navigation</button>
+    <button class="picker-tab" data-proto="p2"><span class="num">02</span> Scroll Story</button>
+    <button class="picker-tab" data-proto="p3"><span class="num">03</span> Card Deck</button>
+    <button class="picker-tab" data-proto="p4"><span class="num">04</span> Journey Map</button>
+    <button class="picker-tab" data-proto="p5"><span class="num">05</span> Phase Tabs</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SHARED VISUALIZATION SVG (used by all prototypes)              -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<svg id="shared-viz-template" style="display:none;">
+  <symbol id="net-viz" viewBox="0 0 600 240">
+    <!-- edges from input to hidden 1 -->
+    <line x1="60" y1="120" x2="220" y2="50" class="fake-edge"/>
+    <line x1="60" y1="120" x2="220" y2="120" class="fake-edge"/>
+    <line x1="60" y1="120" x2="220" y2="190" class="fake-edge dead"/>
+    <!-- edges from hidden 1 to hidden 2 -->
+    <line x1="220" y1="50" x2="380" y2="50" class="fake-edge dim"/>
+    <line x1="220" y1="120" x2="380" y2="120" class="fake-edge dim"/>
+    <line x1="220" y1="190" x2="380" y2="190" class="fake-edge dim"/>
+    <!-- edges from hidden 2 to output -->
+    <line x1="380" y1="50" x2="540" y2="120" class="fake-edge dim"/>
+    <line x1="380" y1="120" x2="540" y2="120" class="fake-edge dim"/>
+    <line x1="380" y1="190" x2="540" y2="120" class="fake-edge dim"/>
+    <!-- nodes -->
+    <circle cx="60" cy="120" class="fake-node in"/>
+    <text x="60" y="118" class="fake-label">x</text>
+    <text x="60" y="130" class="fake-val">0.22</text>
+
+    <circle cx="220" cy="50" class="fake-node h"/>
+    <text x="220" y="48" class="fake-label">h1</text>
+    <text x="220" y="60" class="fake-val">0.32</text>
+
+    <circle cx="220" cy="120" class="fake-node h"/>
+    <text x="220" y="118" class="fake-label">h2</text>
+    <text x="220" y="130" class="fake-val">-0.02</text>
+
+    <circle cx="220" cy="190" class="fake-node h dead"/>
+    <text x="220" y="188" class="fake-label">h3</text>
+    <text x="220" y="200" class="fake-val">0.00</text>
+
+    <circle cx="380" cy="50" class="fake-node h"/>
+    <text x="380" y="48" class="fake-label">h2.1</text>
+    <text x="380" y="60" class="fake-val">—</text>
+
+    <circle cx="380" cy="120" class="fake-node h"/>
+    <text x="380" y="118" class="fake-label">h2.2</text>
+    <text x="380" y="130" class="fake-val">—</text>
+
+    <circle cx="380" cy="190" class="fake-node h"/>
+    <text x="380" y="188" class="fake-label">h2.3</text>
+    <text x="380" y="200" class="fake-val">—</text>
+
+    <circle cx="540" cy="120" class="fake-node out"/>
+    <text x="540" y="118" class="fake-label">ŷ</text>
+    <text x="540" y="130" class="fake-val">—</text>
+
+    <!-- layer labels -->
+    <text x="60" y="20" class="fake-label" style="fill:#9ca3af;font-size:9px;">INPUT</text>
+    <text x="220" y="20" class="fake-label" style="fill:var(--blue);font-size:9px;">HIDDEN 1</text>
+    <text x="380" y="20" class="fake-label" style="fill:#9ca3af;font-size:9px;">HIDDEN 2</text>
+    <text x="540" y="20" class="fake-label" style="fill:#9ca3af;font-size:9px;">OUTPUT</text>
+  </symbol>
+</svg>
+
+<div class="proto-frame">
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PROTOTYPE 1: SIDEBAR NAVIGATION                                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="proto active" id="p1">
+  <div class="proto-meta">
+    <h2>📁 Concept 1: Sidebar Navigation</h2>
+    <p>Familiar Notion / Slack pattern. Always shows where you are AND where you're going.</p>
+    <div class="pros-cons">
+      <span class="pros">✓ Easy to jump around · Phase grouping obvious · Industry-standard</span>
+      <span class="cons">✗ Eats horizontal space · Less immersive</span>
+    </div>
+  </div>
+  <div class="p1-layout">
+    <aside class="p1-sidebar">
+      <div class="p1-phase-group expanded">
+        <div class="p1-phase-header">
+          <span class="chevron">▶</span> 🟢 Intro
+        </div>
+        <div class="p1-step-list">
+          <div class="p1-step completed">Why Neural Networks?</div>
+        </div>
+      </div>
+      <div class="p1-phase-group expanded">
+        <div class="p1-phase-header">
+          <span class="chevron">▶</span> 🟦 Data Prep
+        </div>
+        <div class="p1-step-list">
+          <div class="p1-step completed">Standardization</div>
+        </div>
+      </div>
+      <div class="p1-phase-group expanded">
+        <div class="p1-phase-header">
+          <span class="chevron">▶</span> 🔵 Forward Propagation
+        </div>
+        <div class="p1-step-list">
+          <div class="p1-step completed">Meet the Network</div>
+          <div class="p1-step completed">Feed Input</div>
+          <div class="p1-step current">Hidden 1: Weighted Sum</div>
+          <div class="p1-step upcoming">Hidden 1: ReLU</div>
+          <div class="p1-step upcoming">Hidden 2: Weighted Sum</div>
+          <div class="p1-step upcoming">Hidden 2: ReLU</div>
+          <div class="p1-step upcoming">Output Layer</div>
+        </div>
+      </div>
+      <div class="p1-phase-group">
+        <div class="p1-phase-header">
+          <span class="chevron">▶</span> 🔴 Loss
+        </div>
+      </div>
+      <div class="p1-phase-group">
+        <div class="p1-phase-header">
+          <span class="chevron">▶</span> 🟠 Backward Propagation
+        </div>
+      </div>
+      <div class="p1-phase-group">
+        <div class="p1-phase-header">
+          <span class="chevron">▶</span> 🟣 Weight Update
+        </div>
+      </div>
+    </aside>
+    <main class="p1-main">
+      <div class="p1-main-header">
+        <span class="phase-tag forward">Forward Propagation</span>
+        <h1>Hidden Layer 1: Weighted Sum</h1>
+      </div>
+      <div class="viz-placeholder">
+        <svg viewBox="0 0 600 240"><use href="#net-viz"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:14px;font-size:.85rem;">
+        <span style="font-weight:600;">Ad Spend:</span>
+        <input type="range" value="22" min="-100" max="100" style="flex:1;max-width:280px;accent-color:var(--blue);">
+        <span class="mono" style="font-weight:700;color:var(--blue);">$61k</span>
+      </div>
+      <div class="p1-content">
+        <div class="card">
+          <h3>Formula & Calculation</h3>
+          <div class="formula-box">z = x × w + b</div>
+          <div class="calc-block">Variable definitions:
+  x = input value
+  w = weight
+  b = bias
+  z = weighted sum
+
+Neuron 1:  z = 0.22 × 1.00 + 0.10 = 0.32
+Neuron 2:  z = 0.22 × -1.00 + 0.20 = -0.02
+Neuron 3:  z = 0.22 × 0.80 + (-0.10) = 0.08</div>
+        </div>
+        <div class="card">
+          <h3>Explanation</h3>
+          <div class="explain-block">
+            <p>Each neuron computes a <strong>weighted sum</strong>: multiply the input by a weight, then add a bias.</p>
+            <p><strong>What is a weight?</strong> A weight controls how much influence the input has on this neuron.</p>
+            <p><strong>What is a bias?</strong> The bias is an offset that lets the neuron fire even when the input is 0.</p>
+          </div>
+        </div>
+      </div>
+      <div class="p1-controls">
+        <span style="font-size:.8rem;color:var(--gray);">← / → keys to navigate</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn">« Prev</button>
+          <span style="font-size:.8rem;color:var(--gray);">Step 4 / 16</span>
+          <button class="btn primary">Next »</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PROTOTYPE 2: SCROLL STORY                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="proto" id="p2">
+  <div class="proto-meta">
+    <h2>📜 Concept 2: Scroll Story (Distill.pub-style)</h2>
+    <p>Visualization sticks to the left while content scrolls past on the right. Inspired by interactive ML papers.</p>
+    <div class="pros-cons">
+      <span class="pros">✓ Most "wow factor" · Natural reading flow · Excellent portfolio piece</span>
+      <span class="cons">✗ Hard to jump back · Loses playground feel</span>
+    </div>
+  </div>
+  <div class="p2-progress">
+    <div class="p2-progress-text">
+      <span><strong>Phase 3 of 6:</strong> Forward Propagation</span>
+      <span>Step 4 of 16</span>
+    </div>
+    <div class="p2-progress-bar"><div class="p2-progress-fill"></div></div>
+  </div>
+  <div class="p2-layout">
+    <div class="p2-sticky">
+      <div class="viz-placeholder">
+        <svg viewBox="0 0 600 240"><use href="#net-viz"/></svg>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:14px;font-size:.85rem;">
+        <span style="font-weight:600;">Ad Spend:</span>
+        <input type="range" value="22" min="-100" max="100" style="flex:1;accent-color:var(--blue);">
+        <span class="mono" style="font-weight:700;color:var(--blue);">$61k</span>
+      </div>
+    </div>
+    <div class="p2-content">
+      <section class="p2-section">
+        <h2><span class="step-num">4</span> Hidden Layer 1: Weighted Sum</h2>
+        <div class="formula-box">z = x × w + b   (weighted sum = input × weight + bias)</div>
+        <div class="explain-block">
+          <p>Each neuron computes a <strong>weighted sum</strong>: multiply the input by a weight, then add a bias. Watch how all three neurons in Hidden Layer 1 produce their values from the single input x = 0.22.</p>
+          <p><strong>Why three?</strong> Each neuron learns to detect a different aspect of the input. They start with random weights, then training adjusts them to specialize.</p>
+        </div>
+      </section>
+      <section class="p2-section">
+        <h2><span class="step-num">5</span> Hidden Layer 1: ReLU Activation</h2>
+        <div class="formula-box">a = max(0, z)</div>
+        <div class="explain-block">
+          <p>ReLU is a yes/no gate. If the weighted sum is positive, it passes through. If negative, it becomes 0 — that neuron is "killed" for this input.</p>
+          <p>👀 Notice how Neuron 3 in the visualization is shown in red — it was killed by ReLU.</p>
+        </div>
+      </section>
+      <section class="p2-section">
+        <h2><span class="step-num">6</span> Hidden Layer 2: Weighted Sum</h2>
+        <div class="formula-box">z_j = Σ_i (a_i × w_ij) + b_j</div>
+        <div class="explain-block">
+          <p>Now Layer 2 takes the activations from Layer 1 and combines them with its own weights. Each Layer 2 neuron sees ALL three Layer 1 outputs.</p>
+          <p>This is where the network starts learning <strong>combinations</strong> of features rather than just single ones.</p>
+        </div>
+      </section>
+      <section class="p2-section">
+        <h2><span class="step-num">7</span> Hidden Layer 2: ReLU</h2>
+        <div class="explain-block">
+          <p>Same as before — gate the negative values to zero, let positive ones through. Continue scrolling to see the output...</p>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PROTOTYPE 3: CARD DECK                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="proto" id="p3">
+  <div class="proto-meta">
+    <h2>🎴 Concept 3: Card Deck (App-style with bottom drawer)</h2>
+    <p>Big visualization dominates. Content lives in a swipeable drawer at the bottom. Mobile-first feel.</p>
+    <div class="pros-cons">
+      <span class="pros">✓ Most immersive · Mobile-friendly · Modern app feel · Progress bar replaces clutter</span>
+      <span class="cons">✗ Less obvious how to jump · Bottom drawer can feel cramped</span>
+    </div>
+  </div>
+  <div class="p3-layout">
+    <div class="p3-top">
+      <div class="p3-phase-info">
+        <span><strong>Phase 3 of 6:</strong> Forward Propagation</span>
+        <span>4 / 16</span>
+      </div>
+      <div class="p3-progress-bar">
+        <div class="p3-progress-segment done"></div>
+        <div class="p3-progress-segment done"></div>
+        <div class="p3-progress-segment current"></div>
+        <div class="p3-progress-segment"></div>
+        <div class="p3-progress-segment"></div>
+        <div class="p3-progress-segment"></div>
+      </div>
+    </div>
+    <div class="p3-viz-area">
+      <div class="viz-placeholder">
+        <svg viewBox="0 0 600 240"><use href="#net-viz"/></svg>
+      </div>
+    </div>
+    <div class="p3-drawer">
+      <div class="p3-drawer-handle"></div>
+      <div class="p3-drawer-header">
+        <h2>Hidden Layer 1: Weighted Sum</h2>
+        <span class="step-counter">Step 4 / 16</span>
+      </div>
+      <div class="formula-box">z = x × w + b</div>
+      <div class="explain-block">
+        <p>Each neuron computes a <strong>weighted sum</strong>: multiply input by weight, add bias. The three neurons each have different weights, so they produce three different outputs from the same input.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px;font-size:.82rem;">
+        <span style="font-weight:600;">Ad Spend:</span>
+        <input type="range" value="22" min="-100" max="100" style="flex:1;accent-color:var(--blue);">
+        <span class="mono" style="font-weight:700;color:var(--blue);">$61k</span>
+      </div>
+      <div class="p3-drawer-controls">
+        <button class="btn">« Previous</button>
+        <button class="btn primary">Next Step »</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PROTOTYPE 4: VISUAL JOURNEY MAP                                 -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="proto" id="p4">
+  <div class="proto-meta">
+    <h2>🗺 Concept 4: Visual Journey Map</h2>
+    <p>The whole 16-step training cycle as a connected map. Click any phase/step to dive in. Doubles as a final summary view.</p>
+    <div class="pros-cons">
+      <span class="pros">✓ Distinctive · Hero visualization · Communicates "complete cycle" instantly</span>
+      <span class="cons">✗ Adds navigation layer · More custom work to build</span>
+    </div>
+  </div>
+  <div class="p4-layout">
+    <div class="p4-header">
+      <h1>Your Learning Journey</h1>
+      <p>16 steps through a complete neural network training cycle</p>
+      <a class="p4-cta">▸ Resume at Step 4: Hidden Layer 1: Weighted Sum</a>
+    </div>
+    <div class="p4-map">
+      <div class="p4-phase is-done">
+        <div class="p4-phase-header">
+          <div class="p4-phase-icon intro">1</div>
+          <div class="p4-phase-name">Intro</div>
+          <div class="p4-phase-meta">Completed · 1 step</div>
+        </div>
+        <div class="p4-step-row">
+          <div class="p4-step-node done">0</div>
+        </div>
+      </div>
+      <div class="p4-arrow">▼</div>
+      <div class="p4-phase is-done">
+        <div class="p4-phase-header">
+          <div class="p4-phase-icon data">2</div>
+          <div class="p4-phase-name">Data Preparation</div>
+          <div class="p4-phase-meta">Completed · 1 step</div>
+        </div>
+        <div class="p4-step-row">
+          <div class="p4-step-node done">1</div>
+        </div>
+      </div>
+      <div class="p4-arrow">▼</div>
+      <div class="p4-phase is-current">
+        <div class="p4-phase-header">
+          <div class="p4-phase-icon forward">3</div>
+          <div class="p4-phase-name">Forward Propagation</div>
+          <div class="p4-phase-meta">In progress · 3 / 7 steps</div>
+        </div>
+        <div class="p4-step-row">
+          <div class="p4-step-node done">2</div>
+          <div class="p4-step-node done">3</div>
+          <div class="p4-step-node current">4</div>
+          <div class="p4-step-node">5</div>
+          <div class="p4-step-node">6</div>
+          <div class="p4-step-node">7</div>
+          <div class="p4-step-node">8</div>
+        </div>
+      </div>
+      <div class="p4-arrow">▼</div>
+      <div class="p4-phase">
+        <div class="p4-phase-header">
+          <div class="p4-phase-icon loss">4</div>
+          <div class="p4-phase-name">Loss</div>
+          <div class="p4-phase-meta">Upcoming · 1 step</div>
+        </div>
+        <div class="p4-step-row">
+          <div class="p4-step-node">9</div>
+        </div>
+      </div>
+      <div class="p4-arrow">▼</div>
+      <div class="p4-phase">
+        <div class="p4-phase-header">
+          <div class="p4-phase-icon backward">5</div>
+          <div class="p4-phase-name">Backward Propagation</div>
+          <div class="p4-phase-meta">Upcoming · 5 steps</div>
+        </div>
+        <div class="p4-step-row">
+          <div class="p4-step-node">10</div>
+          <div class="p4-step-node">11</div>
+          <div class="p4-step-node">12</div>
+          <div class="p4-step-node">13</div>
+          <div class="p4-step-node">14</div>
+        </div>
+      </div>
+      <div class="p4-arrow">▼</div>
+      <div class="p4-phase">
+        <div class="p4-phase-header">
+          <div class="p4-phase-icon update">6</div>
+          <div class="p4-phase-name">Weight Update</div>
+          <div class="p4-phase-meta">Upcoming · 1 step</div>
+        </div>
+        <div class="p4-step-row">
+          <div class="p4-step-node">15</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PROTOTYPE 5: PHASE TABS                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="proto" id="p5">
+  <div class="proto-meta">
+    <h2>📑 Concept 5: Phase Tabs (Stripe/Linear-style)</h2>
+    <p>Top-level phase tabs cut visual clutter from 16 dots → 6 tabs + a sub-step row showing only the current phase's steps.</p>
+    <div class="pros-cons">
+      <span class="pros">✓ Direct fix for clutter · Familiar pattern · Lowest effort, highest impact · Closest to current code</span>
+      <span class="cons">✗ Less storytelling · Phase transitions feel like section breaks</span>
+    </div>
+  </div>
+  <div class="p5-tabs">
+    <div class="p5-tab done"><span class="indicator"></span> Intro</div>
+    <div class="p5-tab done"><span class="indicator"></span> Data Prep</div>
+    <div class="p5-tab active"><span class="indicator"></span> Forward Propagation</div>
+    <div class="p5-tab"><span class="indicator"></span> Loss</div>
+    <div class="p5-tab"><span class="indicator"></span> Backward</div>
+    <div class="p5-tab"><span class="indicator"></span> Update</div>
+  </div>
+  <div class="p5-substeps">
+    <div class="p5-substep-dots">
+      <div class="p5-substep-dot done"></div>
+      <div class="p5-substep-dot done"></div>
+      <div class="p5-substep-dot current"></div>
+      <div class="p5-substep-dot"></div>
+      <div class="p5-substep-dot"></div>
+      <div class="p5-substep-dot"></div>
+      <div class="p5-substep-dot"></div>
+    </div>
+    <div class="p5-substep-label">
+      Hidden Layer 1: Weighted Sum
+      <span class="step-counter">Step 3 of 7 in this phase · Step 4 / 16 overall</span>
+    </div>
+  </div>
+  <div class="p5-body">
+    <div class="viz-placeholder">
+      <svg viewBox="0 0 600 240"><use href="#net-viz"/></svg>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:14px;font-size:.85rem;">
+      <span style="font-weight:600;">Ad Spend:</span>
+      <input type="range" value="22" min="-100" max="100" style="flex:1;max-width:280px;accent-color:var(--blue);">
+      <span class="mono" style="font-weight:700;color:var(--blue);">$61k</span>
+    </div>
+    <div class="p5-content">
+      <div class="card">
+        <h3>Formula & Calculation</h3>
+        <div class="formula-box">z = x × w + b</div>
+        <div class="calc-block">Variable definitions:
+  x = input value
+  w = weight
+  b = bias
+  z = weighted sum
+
+Neuron 1:  z = 0.22 × 1.00 + 0.10 = 0.32
+Neuron 2:  z = 0.22 × -1.00 + 0.20 = -0.02
+Neuron 3:  z = 0.22 × 0.80 + (-0.10) = 0.08</div>
+      </div>
+      <div class="card">
+        <h3>Explanation</h3>
+        <div class="explain-block">
+          <p>Each neuron computes a <strong>weighted sum</strong>: multiply input by weight, then add bias.</p>
+          <p><strong>What is a weight?</strong> Controls how much influence the input has on this neuron.</p>
+          <p><strong>What is a bias?</strong> An offset that lets the neuron fire even when input is 0.</p>
+        </div>
+      </div>
+    </div>
+    <div class="p5-controls">
+      <span style="font-size:.8rem;color:var(--gray);">← / → keys to navigate</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn">« Prev</button>
+        <button class="btn primary">Next »</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.picker-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.proto;
+    document.querySelectorAll('.picker-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.proto').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(target).classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
+
+// Toggle phase groups in Prototype 1
+document.querySelectorAll('.p1-phase-header').forEach(h => {
+  h.addEventListener('click', () => h.parentElement.classList.toggle('expanded'));
+});
+</script>
+</body>
+</html>
