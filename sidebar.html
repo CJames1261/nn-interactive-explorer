@@ -1907,11 +1907,14 @@ THE END RESULT:
       const ch = nb - b1[i];
       t += `  \\(b^{[1]}_${i+1}\\): ${fw(b1[i])} − ${LR}×${fc(s.db1g[i])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Layer 2 Weights (\\(W^{[2]}\\), showing column 1 only — 3 of 9 weights) ═══\n`;
+    t += `\n═══ Layer 2 Weights (\\(W^{[2]}\\) — all 9 weights) ═══\n`;
     for (let i = 0; i < 3; i++) {
-      const nw = s.W2n[i][0];
-      const ch = nw - W2[i][0];
-      t += `  \\(W^{[2]}_{${i+1},1}\\): ${fw(W2[i][0])} − ${LR}×${fc(s.dW2[i][0])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      for (let j = 0; j < 3; j++) {
+        const nw = s.W2n[i][j];
+        const ch = nw - W2[i][j];
+        t += `  \\(W^{[2]}_{${i+1},${j+1}}\\): ${fw(W2[i][j])} − ${LR}×${fc(s.dW2[i][j])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      }
+      if (i < 2) t += `\n`; // blank line between source-row groups
     }
     t += `\n═══ Layer 2 Biases (\\(b^{[2]}\\)) ═══\n`;
     for (let j = 0; j < 3; j++) {
