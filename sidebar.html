@@ -92,6 +92,7 @@ body {
 .phase-group-header .phase-dot.loss { background: var(--red); }
 .phase-group-header .phase-dot.backward { background: var(--orange); }
 .phase-group-header .phase-dot.update { background: var(--purple); }
+.phase-group-header .phase-dot.summary { background: #6366f1; }
 .phase-group-header .phase-count {
   margin-left: auto; font-size: .65rem;
   color: var(--gray); font-weight: 600;
@@ -229,6 +230,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .phase-tag.loss { background: var(--red-light); color: var(--red); }
 .phase-tag.backward { background: var(--orange-light); color: var(--orange); }
 .phase-tag.update { background: var(--purple-light); color: var(--purple); }
+.phase-tag.summary { background: #e0e7ff; color: #4338ca; }
 
 /* === NETWORK SVG === */
 .network-wrap {
@@ -363,6 +365,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .card-formula.loss { border-left-color: var(--red); }
 .card-formula.backward { border-left-color: var(--orange); }
 .card-formula.update { border-left-color: var(--purple); }
+.card-formula.summary { border-left-color: #6366f1; }
 .formula-box {
   background: #f0f4ff; border-radius: 6px; padding: 12px 14px;
   font-family: "Consolas","Fira Code",monospace; font-size: .85rem;
@@ -384,6 +387,59 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .formula-box.loss { background: #fef2f2; color: #991b1b; }
 .formula-box.backward { background: #fff7ed; color: #9a3412; }
 .formula-box.update { background: #f5f3ff; color: #5b21b6; }
+.formula-box.summary { background: #eef2ff; color: #3730a3; }
+
+/* === ANIMATION CONTROLS (Step 18: Full Visual Representation) === */
+.anim-ctrl-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.anim-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  padding: 6px 14px;
+  font-size: .85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--gray-dark);
+  transition: background .15s, border-color .15s, transform .05s;
+  font-family: inherit;
+}
+.anim-btn:hover { background: #f9fafb; border-color: var(--gray); }
+.anim-btn:active { transform: translateY(1px); }
+.anim-btn:disabled { opacity: .4; cursor: not-allowed; }
+.anim-btn-primary {
+  background: #6366f1; color: white; border-color: #6366f1;
+}
+.anim-btn-primary:hover { background: #4f46e5; border-color: #4f46e5; }
+.anim-counter {
+  margin-left: auto;
+  font-family: 'Consolas', monospace;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--gray-dark);
+}
+.anim-stage-info {
+  background: #eef2ff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid #6366f1;
+}
+.anim-stage-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 6px;
+  color: #312e81;
+}
+.anim-stage-desc {
+  font-size: .9rem;
+  line-height: 1.55;
+  color: var(--gray-dark);
+}
 .calc-block {
   font-family: "Consolas","Fira Code",monospace; font-size: .78rem;
   line-height: 1.7; white-space: pre-wrap; color: var(--text);
@@ -428,6 +484,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .card-formula.loss  .calc-block .var-defs { background: #fef2f2; color: #991b1b; }
 .card-formula.backward .calc-block .var-defs { background: #fff7ed; color: #9a3412; }
 .card-formula.update .calc-block .var-defs { background: #f5f3ff; color: #5b21b6; }
+.card-formula.summary .calc-block .var-defs { background: #eef2ff; color: #3730a3; }
 
 .card-explain p {
   font-size: .85rem; line-height: 1.6; margin-bottom: 8px; color: #374151;
@@ -2043,6 +2100,31 @@ THE END RESULT:
       activateEdge(2, i, 0, 'edge active-update');
     }
   }
+},
+
+// ── 17: Full Visual Representation (animated walkthrough) ──
+{
+  phase: 'summary', title: 'Full Visual Representation',
+  formula: 'Forward Pass → Loss → Backward Pass (animated)',
+  formulaCaption: '<strong>What it does:</strong> Walks through the complete forward + backward cycle one stage at a time in the network diagram. Press Play to auto-advance, or use Prev/Next to step manually.',
+  calc: `<div id="anim-controls" class="anim-ctrl-bar">
+  <button id="anim-restart-btn" type="button" class="anim-btn" onclick="restartAnim()">↻ Restart</button>
+  <button id="anim-prev-btn" type="button" class="anim-btn" onclick="stepAnim(-1)">◀ Prev</button>
+  <button id="anim-play-btn" type="button" class="anim-btn anim-btn-primary" onclick="toggleAnim()">▶ Play</button>
+  <button id="anim-next-btn" type="button" class="anim-btn" onclick="stepAnim(1)">Next ▶</button>
+  <span id="anim-stage-counter" class="anim-counter"></span>
+</div>
+<div id="anim-stage-info" class="anim-stage-info">
+  <div id="anim-stage-title" class="anim-stage-title"></div>
+  <div id="anim-stage-desc" class="anim-stage-desc"></div>
+</div>`,
+  explain: `<p>This step is a <strong>visual recap</strong> of everything you just walked through. The animation traces a single input \\(x\\) all the way through the forward pass to produce a prediction \\(\\hat{y}\\), measures the loss \\(L\\), then propagates blame backward to compute a gradient for every one of the 22 weights and biases.</p>
+<p>Each stage highlights what's happening at that moment — values appear at every node and edge as they come into play. Dead ReLU neurons stay red, alive ones turn blue (forward) or orange (backward) so you can see the "dying ReLU" effect propagate through both directions.</p>
+<p>By the end, all 22 gradients are computed and ready for Step 17's weight-update formula \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\). In real training, the entire 12-stage cycle you see here runs <strong>once per training sample</strong> (or per batch with averaged gradients) — often <em>millions</em> of times across an entire training run.</p>
+<div class="key-insight"><strong>One full loop = one tiny step downhill.</strong> What unfolds in this 18-second animation is a single trip from "input enters" to "all gradients ready." Real training stacks thousands of these on top of each other, nudging the 22 parameters a little at a time until the loss plateaus.</div>`,
+  render(s) {
+    initFullAnim(s);
+  }
 }
 
   ];
@@ -2178,6 +2260,7 @@ const PHASES = [
   { label: 'Loss', ids: [9, 10], cls: 'loss' },
   { label: 'Backward Propagation', ids: [11,12,13,14,15], cls: 'backward' },
   { label: 'Update Weights', ids: [16], cls: 'update' },
+  { label: 'Visualization', ids: [17], cls: 'summary' },
 ];
 
 function buildStepBar() {
@@ -2258,6 +2341,9 @@ function updateSidebarStates() {
 }
 
 function renderStep() {
+  // Stop any animation running from a previous step (Step 18 in particular)
+  if (typeof stopAnim === 'function') stopAnim();
+
   state = computeAll(parseFloat(getEl('x-slider').value));
   steps = getSteps(state);
 
@@ -2274,7 +2360,7 @@ function renderStep() {
 
   // title
   getEl('step-title').innerHTML =
-    `<span class="phase-tag ${step.phase}">${{intro:'intro',data:'data preparation',forward:'forward propagation',loss:'loss',backward:'backward propagation',update:'update weights'}[step.phase]}</span> ${step.title}`;
+    `<span class="phase-tag ${step.phase}">${{intro:'intro',data:'data preparation',forward:'forward propagation',loss:'loss',backward:'backward propagation',update:'update weights',summary:'visualization'}[step.phase]}</span> ${step.title}`;
 
   // formula card
   const fc = getEl('formula-card');
@@ -2458,6 +2544,301 @@ function renderForwardCumulative(s, stepIdx) {
       showBias(1, i, 'b^[1]_'+(i+1)+'='+fw(b1[i]));
     }
   }
+}
+
+// ════════════════════════════════════════════════════════════════
+// FULL ANIMATION (Step 18 — Full Visual Representation)
+// ════════════════════════════════════════════════════════════════
+
+let animState = { stage: 0, timer: null, playing: false };
+
+// Each stage applies a fresh paint to the SVG and provides a title + description
+// for the calc panel. Forward stages flow blue → into loss → backward stages
+// turn orange → final "complete" stage shows the whole network in purple
+// (matching Step 17's update color, signaling readiness for the update).
+const ANIM_STAGES = [
+  // ── FORWARD ──
+  {
+    title: '1. Input enters the network',
+    desc: 'The standardized input \\(x\\) flows in. This is the value we want to predict the target \\(y_{\\text{true}}\\) from.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+    }
+  },
+  {
+    title: '2. Hidden 1 weighted sum',
+    desc: 'Each Hidden 1 neuron computes \\(z^{[1]}_i = x \\cdot W^{[1]}_i + b^{[1]}_i\\) — combining the input with its weight and bias.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        activateNode(1, i, 'active-fwd', 'z^[1]_'+(i+1), fc(s.Z1[i]));
+        activateEdge(0, 0, i, 'flow-fwd');
+        showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(W1[i]));
+        showBias(1, i, 'b^[1]_'+(i+1)+'='+fw(b1[i]));
+      }
+    }
+  },
+  {
+    title: '3. Hidden 1 ReLU activation',
+    desc: 'Each \\(z^{[1]}_i\\) passes through ReLU: positive values flow through, negative values become \\(0\\). The outputs \\(a^{[1]}_i\\) become inputs for Layer 2. Red = dead neuron.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+        activateEdge(0, 0, i, 'flow-fwd');
+        showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(W1[i]));
+      }
+    }
+  },
+  {
+    title: '4. Hidden 2 weighted sum',
+    desc: 'Each Hidden 2 neuron sums weighted inputs from all 3 Hidden 1 outputs: \\(z^{[2]}_j = \\sum_i a^{[1]}_i \\cdot W^{[2]}_{i,j} + b^{[2]}_j\\). Nine weight edges now matter.',
+    apply(s) {
+      dimAll();
+      for (let i = 0; i < 3; i++) {
+        const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+      }
+      for (let j = 0; j < 3; j++) {
+        activateNode(2, j, 'active-fwd', 'z^[2]_'+(j+1), fc(s.Z2[j]));
+        showBias(2, j, 'b^[2]_'+(j+1)+'='+fw(b2[j]));
+        for (let i = 0; i < 3; i++) {
+          activateEdge(1, i, j, 'flow-fwd');
+          showWeight(1, i, j, 'W^[2]_{'+(i+1)+','+(j+1)+'}='+fw(W2[i][j]));
+        }
+      }
+    }
+  },
+  {
+    title: '5. Hidden 2 ReLU activation',
+    desc: 'ReLU gates each \\(z^{[2]}_j\\) the same way as Layer 1. The outputs \\(a^{[2]}_j\\) head to the output layer.',
+    apply(s) {
+      dimAll();
+      for (let i = 0; i < 3; i++) {
+        const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+      }
+      for (let j = 0; j < 3; j++) {
+        const cls = s.A2[j] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(2, j, cls, 'a^[2]_'+(j+1), fc(s.A2[j]));
+      }
+    }
+  },
+  {
+    title: '6. Output: prediction ŷ',
+    desc: 'Final layer (linear, no ReLU): \\(\\hat{y} = \\sum_i a^{[2]}_i \\cdot W^{[3]}_i + b^{[3]}\\). The number on the output node is the network\'s guess.',
+    apply(s) {
+      dimAll();
+      for (let j = 0; j < 3; j++) {
+        const cls = s.A2[j] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(2, j, cls, 'a^[2]_'+(j+1), fc(s.A2[j]));
+      }
+      activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+      showBias(3, 0, 'b^[3]='+fw(b3));
+      for (let i = 0; i < 3; i++) {
+        activateEdge(2, i, 0, 'flow-fwd');
+        showWeight(2, i, 0, 'W^[3]_'+(i+1)+'='+fw(W3[i]));
+      }
+    }
+  },
+  {
+    title: '7. Loss: how wrong was the prediction?',
+    desc: 'MSE: \\(L = (y_{\\text{true}} - \\hat{y})^2\\). A single scalar measures the error — the network\'s "altitude" on the loss surface.',
+    apply(s) {
+      dimAll();
+      activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+      getEl('e-loss').className.baseVal = 'edge flow-fwd';
+      getEl('c-loss').setAttribute('stroke', 'var(--red)');
+      getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+      getEl('lbl-loss').textContent = 'L';
+      getEl('val-loss').textContent = f4(s.lossMSE);
+    }
+  },
+  // ── BACKWARD ──
+  {
+    title: '8. Backward starts: ∂L/∂ŷ',
+    desc: 'Compute the seed gradient: \\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y})\\). Every other gradient flows from this one number.',
+    apply(s) {
+      dimAll();
+      activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', fc(s.dLdy));
+      getEl('e-loss').className.baseVal = 'edge flow-bwd';
+      getEl('c-loss').setAttribute('stroke', 'var(--orange)');
+      getEl('c-loss').setAttribute('fill', 'var(--orange-light)');
+      getEl('lbl-loss').textContent = 'L';
+      getEl('val-loss').textContent = f4(s.lossMSE);
+    }
+  },
+  {
+    title: '9. Output layer backprop',
+    desc: 'Compute \\(\\partial L/\\partial W^{[3]}_i\\) (3 terminal gradients) and \\(\\partial L/\\partial a^{[2]}_i\\) (gradient passed back to Layer 2).',
+    apply(s) {
+      dimAll();
+      activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', fc(s.dLdy));
+      for (let i = 0; i < 3; i++) {
+        activateNode(2, i, 'active-bwd', '∂L/∂a', fc(s.dA2[i]));
+        activateEdge(2, i, 0, 'flow-bwd');
+        showWeight(2, i, 0, '∂L/∂W^[3]_'+(i+1)+'='+fc(s.dW3[i]));
+      }
+    }
+  },
+  {
+    title: '10. Through ReLU 2 & Dense Layer 2',
+    desc: 'ReLU 2 gates each gradient by its forward z (dead neurons block flow). Then compute 9 \\(\\partial L/\\partial W^{[2]}_{i,j}\\) and pass back to Layer 1.',
+    apply(s) {
+      dimAll();
+      for (let j = 0; j < 3; j++) {
+        const alive = s.Z2[j] > 0;
+        activateNode(2, j, alive ? 'active-bwd' : 'active-relu-dead', '∂L/∂z', fc(s.dZ2[j]));
+      }
+      for (let i = 0; i < 3; i++) {
+        activateNode(1, i, 'active-bwd', '∂L/∂a', fc(s.dA1[i]));
+        for (let j = 0; j < 3; j++) {
+          const alive = s.dZ2[j] !== 0 && s.A1[i] !== 0;
+          activateEdge(1, i, j, alive ? 'flow-bwd' : 'edge dead');
+        }
+      }
+    }
+  },
+  {
+    title: '11. Through ReLU 1 & Dense Layer 1',
+    desc: 'Final backprop layer. Compute 3 \\(\\partial L/\\partial W^{[1]}_i\\) and 3 bias gradients. All 22 sensitivity scores now exist.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-bwd', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        const alive = s.Z1[i] > 0;
+        activateNode(1, i, alive ? 'active-bwd' : 'active-relu-dead', '∂L/∂z', fc(s.dZ1[i]));
+        activateEdge(0, 0, i, alive ? 'flow-bwd' : 'edge dead');
+        showWeight(0, 0, i, '∂L/∂W^[1]_'+(i+1)+'='+fc(s.dW1g[i]));
+        showBias(1, i, '∂L/∂b^[1]_'+(i+1)+'='+fc(s.db1g[i]));
+      }
+    }
+  },
+  {
+    title: '12. Complete — 22 gradients ready for update',
+    desc: 'Forward + backward done. Every weight and bias has a gradient. Step 17 will now apply \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\) to all 22 parameters.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-update', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        activateNode(1, i, 'active-update', 'a^[1]_'+(i+1), fc(s.A1[i]));
+        activateEdge(0, 0, i, 'edge active-update');
+      }
+      for (let j = 0; j < 3; j++) {
+        activateNode(2, j, 'active-update', 'a^[2]_'+(j+1), fc(s.A2[j]));
+        for (let i = 0; i < 3; i++) activateEdge(1, i, j, 'edge active-update');
+      }
+      activateNode(3, 0, 'active-update', 'ŷ', fc(s.yPred));
+      for (let i = 0; i < 3; i++) activateEdge(2, i, 0, 'edge active-update');
+      getEl('e-loss').className.baseVal = 'edge active-update';
+      getEl('c-loss').setAttribute('stroke', 'var(--purple)');
+      getEl('c-loss').setAttribute('fill', 'var(--purple-light)');
+      getEl('lbl-loss').textContent = 'L';
+      getEl('val-loss').textContent = f4(s.lossMSE);
+    }
+  }
+];
+
+const ANIM_INTERVAL_MS = 1700;
+
+function stopAnim() {
+  if (animState.timer) {
+    clearTimeout(animState.timer);
+    animState.timer = null;
+  }
+  animState.playing = false;
+}
+
+function initFullAnim(s) {
+  stopAnim();
+  animState.stage = 0;
+  animState.playing = false;
+  // Defer one tick so the calc-block HTML is in the DOM before we paint it
+  setTimeout(() => { runAnimStage(); updatePlayBtnLabel(); }, 0);
+}
+
+function runAnimStage() {
+  const stage = ANIM_STAGES[animState.stage];
+  if (!stage) return;
+  stage.apply(state);
+  const titleEl = getEl('anim-stage-title');
+  const descEl  = getEl('anim-stage-desc');
+  const counter = getEl('anim-stage-counter');
+  if (titleEl)  titleEl.textContent = stage.title;
+  if (descEl) {
+    descEl.innerHTML = stage.desc;
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(descEl, {
+        delimiters: [
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true }
+        ],
+        throwOnError: false
+      });
+    }
+  }
+  if (counter) counter.textContent = `Stage ${animState.stage + 1} / ${ANIM_STAGES.length}`;
+  const prev = getEl('anim-prev-btn'); if (prev) prev.disabled = animState.stage === 0;
+  const next = getEl('anim-next-btn'); if (next) next.disabled = animState.stage === ANIM_STAGES.length - 1;
+}
+
+function updatePlayBtnLabel() {
+  const btn = getEl('anim-play-btn');
+  if (!btn) return;
+  btn.textContent = animState.playing ? '⏸ Pause' : '▶ Play';
+}
+
+function scheduleNext() {
+  if (!animState.playing) return;
+  animState.timer = setTimeout(() => {
+    if (animState.stage < ANIM_STAGES.length - 1) {
+      animState.stage++;
+      runAnimStage();
+      scheduleNext();
+    } else {
+      animState.playing = false;
+      updatePlayBtnLabel();
+    }
+  }, ANIM_INTERVAL_MS);
+}
+
+function playAnim() {
+  // If at the end, restart from the beginning
+  if (animState.stage >= ANIM_STAGES.length - 1) {
+    animState.stage = 0;
+    runAnimStage();
+  }
+  animState.playing = true;
+  updatePlayBtnLabel();
+  scheduleNext();
+}
+
+function pauseAnim() {
+  stopAnim();
+  updatePlayBtnLabel();
+}
+
+function toggleAnim() {
+  if (animState.playing) pauseAnim();
+  else playAnim();
+}
+
+function stepAnim(dir) {
+  pauseAnim();
+  const next = animState.stage + dir;
+  if (next < 0 || next >= ANIM_STAGES.length) return;
+  animState.stage = next;
+  runAnimStage();
+}
+
+function restartAnim() {
+  pauseAnim();
+  animState.stage = 0;
+  runAnimStage();
 }
 
 function goStep(dir) {
