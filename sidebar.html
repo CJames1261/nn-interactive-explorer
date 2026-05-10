@@ -1304,9 +1304,15 @@ function getSteps(s) {
         t += `  w[${i}][${j}]: ${fc(s.A1[i])} × ${fc(s.dZ2[j])} = ${fc(s.dW2[i][j])}\n`;
       }
     }
-    t += `\nGradient passed to Layer 1:\n`;
-    for (let j = 0; j < 3; j++)
-      t += `  ∂L/∂a${j+1} = <span class="result">${fc(s.dA1[j])}</span>\n`;
+    t += `\nGradient passed to Layer 1 (chain rule through W2):\n`;
+    t += `Formula: ∂L/∂a_i = Σ_j (W2[i][j] × ∂L/∂z_j)\n`;
+    t += `(Each Layer 1 neuron's gradient = sum of its outgoing\n`;
+    t += ` weights times the gradients flowing back from Layer 2.)\n\n`;
+    for (let i = 0; i < 3; i++) {
+      t += `  ∂L/∂a${i+1} = (${fw(W2[i][0])} × ${fc(s.dZ2[0])}) + (${fw(W2[i][1])} × ${fc(s.dZ2[1])}) + (${fw(W2[i][2])} × ${fc(s.dZ2[2])})\n`;
+      t += `        = ${fc(W2[i][0]*s.dZ2[0])} + ${fc(W2[i][1]*s.dZ2[1])} + ${fc(W2[i][2]*s.dZ2[2])}\n`;
+      t += `        = <span class="result">${fc(s.dA1[i])}</span>\n\n`;
+    }
     return t;
   })(),
   explain: `<p><strong>ReLU backward = a yes/no gate.</strong> Remember, ReLU zeroed out negative values on the forward pass. Now it does the same to gradients: if a neuron was active (z &gt; 0), the gradient flows through. If it was dead (z &le; 0), the gradient is <strong>blocked completely</strong>.</p>
