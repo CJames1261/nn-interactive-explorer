@@ -1073,11 +1073,20 @@ function getSteps(s) {
   calc: (() => {
     let t = `Incoming gradient: ∂L/∂ŷ = ${f3(s.dLdy)}\n`;
     t += `(Linear backward: gradient passes through unchanged)\n\n`;
-    t += `Weight gradients (∂L/∂w = a × gradient):\n`;
-    for (let i = 0; i < 3; i++)
-      t += `  ∂L/∂w${i+1} = ${fc(s.A2[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dW3[i])}</span>\n`;
+    t += `Layer 2 activations (a_i) used in weight gradients:\n`;
+    for (let i = 0; i < 3; i++) {
+      const aliveA = s.A2[i] > 0;
+      const cls = aliveA ? 'alive' : 'dead';
+      const tag = aliveA ? '✓ ALIVE' : '✗ DEAD (killed by ReLU — w gradient = 0)';
+      t += `  <span class="${cls}">a_${i+1} = ${fc(s.A2[i])}  ${tag}</span>\n`;
+    }
+    t += `\nWeight gradients (∂L/∂w_i = a_i × ∂L/∂ŷ):\n`;
+    for (let i = 0; i < 3; i++) {
+      const cls = s.A2[i] > 0 ? 'alive' : 'dead';
+      t += `  <span class="${cls}">∂L/∂w${i+1} = a_${i+1} × ∂L/∂ŷ = ${fc(s.A2[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dW3[i])}</span></span>\n`;
+    }
     t += `\nBias gradient:\n  ∂L/∂b = <span class="result">${fc(s.db3g)}</span>\n`;
-    t += `\nGradient passed to Layer 2 (∂L/∂a = w × gradient):\n`;
+    t += `\nGradient passed to Layer 2 (∂L/∂a_i = w_i × ∂L/∂ŷ):\n`;
     for (let i = 0; i < 3; i++)
       t += `  ∂L/∂a${i+1} = ${fw(W3[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dA2[i])}</span>\n`;
     return t;
@@ -1128,11 +1137,19 @@ function getSteps(s) {
       const cls = alive ? 'alive' : 'dead';
       t += `  <span class="${cls}">∂L/∂z${j+1}: z=${fc(s.Z2[j])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ2[j])}</span>\n`;
     }
-    t += `\nDense 2 weight gradients (∂L/∂w = a_prev × ∂L/∂z):\n`;
+    t += `\nDense 2 weight gradients (∂L/∂w_ij = a_i × ∂L/∂z_j):\n`;
+    t += `where a_i = activation from Layer 1 (forward pass)\n\n`;
     for (let i = 0; i < 3; i++) {
+      const aliveA = s.A1[i] > 0;
+      const tag = aliveA
+        ? `a_${i+1} = ${fc(s.A1[i])}  ✓ ALIVE`
+        : `a_${i+1} = 0.0000  ✗ DEAD (killed by ReLU — all w[${i}][·] gradients = 0)`;
+      const cls = aliveA ? 'alive' : 'dead';
+      t += `<span class="${cls}">─── Layer 1 neuron ${i+1}:  ${tag} ───</span>\n`;
       for (let j = 0; j < 3; j++) {
-        t += `  w[${i}][${j}]: ${fc(s.A1[i])} × ${fc(s.dZ2[j])} = ${fc(s.dW2[i][j])}\n`;
+        t += `  ∂L/∂w[${i}][${j}] = a_${i+1} × ∂L/∂z_${j+1} = ${fc(s.A1[i])} × ${fc(s.dZ2[j])} = ${fc(s.dW2[i][j])}\n`;
       }
+      t += `\n`;
     }
     t += `\nGradient passed to Layer 1 (chain rule through W2):\n`;
     t += `Formula: ∂L/∂a_i = Σ_j (W2[i][j] × ∂L/∂z_j)\n`;
