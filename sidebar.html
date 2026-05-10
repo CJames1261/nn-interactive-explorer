@@ -1664,6 +1664,32 @@ THE END RESULT:
       const cls = s.A2[i] > 0 ? 'alive' : 'dead';
       t += `  <span class="${cls}">\\(\\partial L / \\partial W^{[3]}_${i+1}\\) = ${fc(s.dW3data[i])} + ${fc(s.dW3L2[i])} = <span class="result">${fc(s.dW3[i])}</span></span>\n`;
     }
+    // ── Show how these terminal gradients feed into Step 17's update ──
+    t += `\n─── Where these 3 gradients go next ───\n\n`;
+    t += `These values are TERMINAL — they don't feed into Steps 15 or 16.\n`;
+    t += `They'll be used in Step 17 (Weight & Bias Update) to actually\n`;
+    t += `change the output-layer weights \\(W^{[3]}\\).\n\n`;
+    t += `Update formula (applied in Step 17):\n`;
+    t += `  \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\dfrac{\\partial L}{\\partial W}\\)   with \\(\\eta\\) = ${LR} (learning rate)\n\n`;
+    t += `Working through each output weight, step by step:\n\n`;
+    for (let i = 0; i < 3; i++) {
+      const grad   = s.dW3[i];
+      const prod   = LR * grad;            // = η · ∂L/∂W
+      const wOld   = W3[i];
+      const wNew   = s.W3n[i];             // = wOld − prod
+      const negProd = -prod;               // the "nudge" applied to W
+      const signStr = negProd >= 0 ? '+' : '−';
+      const absNeg  = Math.abs(negProd);
+      t += `  \\(W^{[3]}_${i+1}\\):  ${fw(wOld)} − (${LR} × ${fc(grad)})\n`;
+      t += `          = ${fw(wOld)} − (${fc(prod)})\n`;
+      t += `          = ${fw(wOld)} ${signStr} ${fc(absNeg)}\n`;
+      t += `          = <span class="result">${fc(wNew)}</span>   ← new \\(W^{[3]}_${i+1}\\)\n\n`;
+    }
+    t += `Notice the "double negative" in each line: when \\(\\partial L/\\partial W\\)\n`;
+    t += `is negative, the rule's minus sign + the gradient's minus sign\n`;
+    t += `combine to INCREASE \\(W\\). All three output weights grow this round,\n`;
+    t += `pushing \\(\\hat{y}\\) upward toward \\(y_{\\text{true}}\\) (= ${f4(s.yTrue)}) — exactly\n`;
+    t += `what we want, since the network underpredicted (\\(\\hat{y}\\) = ${fc(s.yPred)}).\n`;
     t += `\nBias gradient (\\(\\partial L / \\partial b^{[3]} = \\partial L / \\partial \\hat{y}\\) — bias coefficient is 1):\n`;
     t += `  \\(\\partial L / \\partial b^{[3]}\\) = <span class="result">${fc(s.db3g)}</span>\n`;
     t += `\nGradient passed back to Layer 2 (\\(\\partial L / \\partial a^{[2]}_i = W^{[3]}_i \\cdot \\partial L / \\partial \\hat{y}\\)):\n`;
