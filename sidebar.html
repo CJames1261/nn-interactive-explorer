@@ -240,15 +240,15 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 #network-svg-fwd { width: 100%; height: auto; display: block; }
 /* Default: single-network layout (forward snapshot hidden) */
 .network-split { display: block; }
-/* On backprop steps, the wrapper toggles .split for side-by-side networks */
+/* On backprop steps, the wrapper toggles .split — networks stack vertically
+   so each gets full width and remains readable */
 .network-split.split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
-  align-items: start;
 }
 .network-mini-title {
-  font-size: .8rem;
+  font-size: .9rem;
   font-weight: 700;
   color: var(--gray-dark);
   padding: 4px 6px 8px;
@@ -266,10 +266,6 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   border: 1px solid #fed7aa;
   border-radius: var(--radius);
   padding: 6px 6px 10px;
-}
-@media (max-width: 900px) {
-  /* On mobile, stack instead of side-by-side */
-  .network-split.split { grid-template-columns: 1fr; }
 }
 
 .edge { stroke: #d1d5db; stroke-width: 1.5; fill: none; transition: all .3s; }
