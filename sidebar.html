@@ -1312,39 +1312,39 @@ function getSteps(s) {
   to blame? And by how much should we change each one?
 
 THE BIG EQUATION (where all 22 parameters live):
-  Building from input forward, the network's prediction ŷ is:
+  Building from input forward, the network's prediction \\(\\hat{y}\\) is:
 
     Layer 1  (3 weights + 3 biases = 6 parameters):
-      z^[1]_1 = x · W^[1]_1 + b^[1]_1
-      z^[1]_2 = x · W^[1]_2 + b^[1]_2
-      z^[1]_3 = x · W^[1]_3 + b^[1]_3
-      a^[1]_i = max(0, z^[1]_i)            (ReLU — no params)
+      \\(z^{[1]}_1 = x \\cdot W^{[1]}_1 + b^{[1]}_1\\)
+      \\(z^{[1]}_2 = x \\cdot W^{[1]}_2 + b^{[1]}_2\\)
+      \\(z^{[1]}_3 = x \\cdot W^{[1]}_3 + b^{[1]}_3\\)
+      \\(a^{[1]}_i = \\max(0,\\, z^{[1]}_i)\\)            (ReLU — no params)
 
     Layer 2  (9 weights + 3 biases = 12 parameters):
-      z^[2]_1 = a^[1]_1·W^[2]_11 + a^[1]_2·W^[2]_21 + a^[1]_3·W^[2]_31 + b^[2]_1
-      z^[2]_2 = a^[1]_1·W^[2]_12 + a^[1]_2·W^[2]_22 + a^[1]_3·W^[2]_32 + b^[2]_2
-      z^[2]_3 = a^[1]_1·W^[2]_13 + a^[1]_2·W^[2]_23 + a^[1]_3·W^[2]_33 + b^[2]_3
-      a^[2]_j = max(0, z^[2]_j)            (ReLU — no params)
+      \\(z^{[2]}_1 = a^{[1]}_1 \\cdot W^{[2]}_{1,1} + a^{[1]}_2 \\cdot W^{[2]}_{2,1} + a^{[1]}_3 \\cdot W^{[2]}_{3,1} + b^{[2]}_1\\)
+      \\(z^{[2]}_2 = a^{[1]}_1 \\cdot W^{[2]}_{1,2} + a^{[1]}_2 \\cdot W^{[2]}_{2,2} + a^{[1]}_3 \\cdot W^{[2]}_{3,2} + b^{[2]}_2\\)
+      \\(z^{[2]}_3 = a^{[1]}_1 \\cdot W^{[2]}_{1,3} + a^{[1]}_2 \\cdot W^{[2]}_{2,3} + a^{[1]}_3 \\cdot W^{[2]}_{3,3} + b^{[2]}_3\\)
+      \\(a^{[2]}_j = \\max(0,\\, z^{[2]}_j)\\)            (ReLU — no params)
 
     Output  (3 weights + 1 bias = 4 parameters):
-      ŷ = a^[2]_1·W^[3]_1 + a^[2]_2·W^[3]_2 + a^[2]_3·W^[3]_3 + b^[3]
+      \\(\\hat{y} = a^{[2]}_1 \\cdot W^{[3]}_1 + a^{[2]}_2 \\cdot W^{[3]}_2 + a^{[2]}_3 \\cdot W^{[3]}_3 + b^{[3]}\\)
 
   And the loss is built on top:
-      L = (y_true - ŷ)²
+      \\(L = (y_{\\text{true}} - \\hat{y})^2\\)
 
-  If you substitute every a^[2], a^[1], z^[2], z^[1] back into ŷ,
+  If you substitute every \\(a^{[2]}\\), \\(a^{[1]}\\), \\(z^{[2]}\\), \\(z^{[1]}\\) back into \\(\\hat{y}\\),
   you get ONE giant nested function — L is a function of these
-  22 variables (and nothing else, since x and y_true are given):
+  22 variables (and nothing else, since x and \\(y_{\\text{true}}\\) are given):
 
-      L = f( W^[1]_1, W^[1]_2, W^[1]_3,           ← 3 Layer 1 weights
-             b^[1]_1, b^[1]_2, b^[1]_3,           ← 3 Layer 1 biases
-             W^[2]_11, W^[2]_12, W^[2]_13,        ← 9 Layer 2 weights
-             W^[2]_21, W^[2]_22, W^[2]_23,
-             W^[2]_31, W^[2]_32, W^[2]_33,
-             b^[2]_1, b^[2]_2, b^[2]_3,           ← 3 Layer 2 biases
-             W^[3]_1, W^[3]_2, W^[3]_3,           ← 3 output weights
-             b^[3] )                              ← 1 output bias
-                                                    ── total: 22
+      \\(L = f(\\,W^{[1]}_1,\\; W^{[1]}_2,\\; W^{[1]}_3,\\)             ← 3 Layer 1 weights
+             \\(b^{[1]}_1,\\; b^{[1]}_2,\\; b^{[1]}_3,\\)             ← 3 Layer 1 biases
+             \\(W^{[2]}_{1,1},\\; W^{[2]}_{1,2},\\; W^{[2]}_{1,3},\\)     ← 9 Layer 2 weights
+             \\(W^{[2]}_{2,1},\\; W^{[2]}_{2,2},\\; W^{[2]}_{2,3},\\)
+             \\(W^{[2]}_{3,1},\\; W^{[2]}_{3,2},\\; W^{[2]}_{3,3},\\)
+             \\(b^{[2]}_1,\\; b^{[2]}_2,\\; b^{[2]}_3,\\)             ← 3 Layer 2 biases
+             \\(W^{[3]}_1,\\; W^{[3]}_2,\\; W^{[3]}_3,\\)             ← 3 output weights
+             \\(b^{[3]}\\,)\\)                          ← 1 output bias
+                                                ── total: 22
 
   THE OPTIMIZATION:
     Training a neural network = finding values for these 22
@@ -1364,9 +1364,9 @@ THE SOLUTION — BACKPROPAGATION:
   Step 1   Step 2     Step 3       Step 4
 
 THE TOOL — PARTIAL DERIVATIVES:
-  Notation: ∂L/∂w means "partial derivative of L with
+  Notation: \\(\\partial L / \\partial w\\) means "partial derivative of L with
   respect to w" — the slope of L when only w changes.
-  We pronounce ∂ as "partial dee" or "del".
+  We pronounce \\(\\partial\\) as "partial dee" or "del".
 
   Why "partial"? Because the loss L depends on MANY
   variables at once (all 22 weights and biases). A
@@ -1379,9 +1379,9 @@ THE TOOL — PARTIAL DERIVATIVES:
   measures: how does THIS specific weight/bias affect
   the prediction error if we increase or decrease it?
 
-  Concrete example: if y = x², then dy/dx = 2x.
-    At x = 3, slope is 6.
-    Nudge x by 0.01: y changes by ~0.06 (= 2·3·0.01).
+  Concrete example: if \\(y = x^2\\), then \\(dy/dx = 2x\\).
+    At \\(x = 3\\), slope is 6.
+    Nudge x by 0.01: y changes by ~0.06 (\\(= 2 \\cdot 3 \\cdot 0.01\\)).
     Bigger x → steeper slope → bigger change in y.
 
   We use partial derivatives because they tell us
@@ -1397,12 +1397,12 @@ THE END RESULT:
     - size  → how much (the magnitude of the nudge)
   to reduce the error.`,
   explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights and biases to blame for an error — and by how much. It's the engine that makes learning possible.</p>
-<p><strong>The loss is one giant function of 22 variables.</strong> If you mentally substitute the forward pass back into itself, our prediction ŷ becomes a deeply nested expression involving <strong>all 22 parameters</strong>: the 15 weights and 7 biases. The loss <code>L = (y_true − ŷ)²</code> sits on top of that. So <code>L</code> is one function of 22 variables (with x and y_true fixed as data) — and our goal during training is to find values for those 22 variables that <strong>minimize L</strong>. The calc block above lays the full equation out layer by layer.</p>
+<p><strong>The loss is one giant function of 22 variables.</strong> If you mentally substitute the forward pass back into itself, our prediction \\(\\hat{y}\\) becomes a deeply nested expression involving <strong>all 22 parameters</strong>: the 15 weights and 7 biases. The loss \\(L = (y_{\\text{true}} - \\hat{y})^2\\) sits on top of that. So \\(L\\) is one function of 22 variables (with \\(x\\) and \\(y_{\\text{true}}\\) fixed as data) — and our goal during training is to find values for those 22 variables that <strong>minimize \\(L\\)</strong>. The calc block above lays the full equation out layer by layer.</p>
 <p><strong>Why partial derivatives?</strong> We're computing one partial derivative <em>per parameter</em> (per weight and per bias) so we can measure how <strong>that specific parameter</strong> affects the prediction error if we increase or decrease it by a tiny amount. The "partial" part just means: the loss depends on MANY variables at once (all 22 in our network), so when we take the derivative with respect to ONE of them, we treat the other 21 as fixed.</p>
 <p><strong>Per-parameter, not per-node.</strong> A single neuron usually has MULTIPLE parameters — one bias, plus one weight for each incoming connection. Each parameter gets its own partial derivative. For example, a Hidden Layer 2 neuron has 3 incoming weights + 1 bias = 4 partial derivatives associated with it.</p>
 <p><strong>For statisticians:</strong> Think of backpropagation as computing the <em>partial derivative of the loss with respect to each parameter</em> — but for a multi-layer model. In simple linear regression you have one β per predictor; here we have 22 parameters spread across multiple layers, and we need a "marginal effect" for each one.</p>
 <p><strong>For data analysts:</strong> Think of it as a structured <em>sensitivity analysis</em>. We ask of every single weight and bias: "If I changed you by a tiny amount, how much would the prediction error change?" The answer is that parameter's gradient — its responsibility score for the current error.</p>
-<p><strong>Why "back"-propagation?</strong> The error originates at the OUTPUT (where the prediction was wrong). To assign blame to weights deeper in the network, we have to trace the influence backwards — using the chain rule: if weight W affects neuron N, and neuron N affects the loss, then W's effect on loss = (W→N) × (N→loss). Multiply sensitivities along the chain.</p>
+<p><strong>Why "back"-propagation?</strong> The error originates at the OUTPUT (where the prediction was wrong). To assign blame to weights deeper in the network, we have to trace the influence backwards — using the chain rule: if weight \\(W\\) affects neuron \\(N\\), and neuron \\(N\\) affects the loss, then \\(W\\)'s effect on loss \\(= (W \\to N) \\times (N \\to L)\\). Multiply sensitivities along the chain.</p>
 <div class="key-insight"><strong>End result of the next 4 steps:</strong> A complete set of <strong>22 partial derivatives</strong> — one per weight and one per bias. Each gradient tells us: (1) which direction to nudge that parameter (sign — should we increase or decrease it?), and (2) how strongly (magnitude — by how much?). The final "Update Weights" step uses these gradients to actually change the parameters and improve the network.</div>`,
   render(s) {
     dimAll();
