@@ -497,6 +497,9 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
     <span style="margin-left:8px;font-size:.8rem;color:var(--gray)">
       Actual Revenue = <span id="y-true-val">$99k</span>
     </span>
+    <span style="margin-left:6px;font-size:.72rem;color:var(--gray-dark);background:#fef2f2;padding:2px 8px;border-radius:6px;font-family:'Consolas',monospace;">
+      → standardized y = <span id="y-std-val" style="font-weight:700;color:#991b1b;">0.98</span>
+    </span>
   </div>
 
   <div class="info-grid" id="info-grid">
@@ -1005,12 +1008,16 @@ function getSteps(s) {
   phase: 'forward', title: 'Hidden Layer 1: ReLU Activation',
   formula: 'a_i = max(0, z_i)',
   calc: (() => {
-    let t = '';
+    let t = `Variable definitions:\n`;
+    t += `  z_i = pre-activation (weighted sum) from previous step\n`;
+    t += `  a_i = activation (ReLU output) — what the next layer sees\n`;
+    t += `  max(0, z) = "if z is positive, keep it; if negative, zero it"\n\n`;
+    t += `─── Apply ReLU to each neuron ───\n\n`;
     for (let i = 0; i < 3; i++) {
       const alive = s.Z1[i] > 0;
       const cls = alive ? 'alive' : 'dead';
       const tag = alive ? '✓ passes through' : '✗ BLOCKED (set to 0)';
-      t += `<span class="${cls}">Neuron ${i+1}:  max(0, ${fc(s.Z1[i])}) = ${fc(s.A1[i])}  ${tag}</span>\n`;
+      t += `<span class="${cls}">Neuron ${i+1}:  a_${i+1} = max(0, ${fc(s.Z1[i])}) = ${fc(s.A1[i])}  ${tag}</span>\n`;
     }
     return t;
   })(),
@@ -1035,9 +1042,24 @@ function getSteps(s) {
   phase: 'forward', title: 'Hidden Layer 2: Weighted Sum',
   formula: 'z_j = Σ_i (a_i × w_ij) + b_j',
   calc: (() => {
-    let t = '';
+    let t = `Variable definitions:\n`;
+    t += `  a_i  = activation from Layer 1 neuron i (ReLU output)\n`;
+    t += `  w_ij = weight from Layer 1 neuron i → Layer 2 neuron j\n`;
+    t += `  b_j  = bias of Layer 2 neuron j\n`;
+    t += `  z_j  = weighted sum (raw score) for Layer 2 neuron j\n\n`;
+    t += `Where do w and b values come from?\n`;
+    t += `  In our demo, weights and biases are HARDCODED initial\n`;
+    t += `  values so the math is reproducible. In real training,\n`;
+    t += `  weights start RANDOM (small numbers near 0) and biases\n`;
+    t += `  usually start at 0. Both are then UPDATED every iteration\n`;
+    t += `  by gradient descent (see the final "Weight Update" step).\n\n`;
+    t += `Layer 2 weights (W2 matrix)        Layer 2 biases (b2)\n`;
+    t += `  W2[0] = [${fw(W2[0][0])}, ${fw(W2[0][1])}, ${fw(W2[0][2])}]      b_1 = ${fw(b2[0])}\n`;
+    t += `  W2[1] = [${fw(W2[1][0])},  ${fw(W2[1][1])}, ${fw(W2[1][2])}]      b_2 = ${fw(b2[1])}\n`;
+    t += `  W2[2] = [${fw(W2[2][0])}, ${fw(W2[2][1])},  ${fw(W2[2][2])}]      b_3 = ${fw(b2[2])}\n\n`;
+    t += `─── Calculations ───\n\n`;
     for (let j = 0; j < 3; j++) {
-      t += `Neuron ${j+1}:  z = `;
+      t += `Neuron ${j+1}:  z_${j+1} = `;
       const terms = [];
       for (let i = 0; i < 3; i++) {
         terms.push(`${fc(s.A1[i])}×${fw(W2[i][j])}`);
@@ -1076,12 +1098,16 @@ function getSteps(s) {
   phase: 'forward', title: 'Hidden Layer 2: ReLU Activation',
   formula: 'a_j = max(0, z_j)',
   calc: (() => {
-    let t = '';
+    let t = `Variable definitions:\n`;
+    t += `  z_j = pre-activation (weighted sum) from Layer 2\n`;
+    t += `  a_j = activation (ReLU output) — what the output layer sees\n`;
+    t += `  max(0, z) = ReLU gate (keep positives, zero negatives)\n\n`;
+    t += `─── Apply ReLU to each neuron ───\n\n`;
     for (let j = 0; j < 3; j++) {
       const alive = s.Z2[j] > 0;
       const cls = alive ? 'alive' : 'dead';
       const tag = alive ? '✓ passes' : '✗ BLOCKED';
-      t += `<span class="${cls}">Neuron ${j+1}:  max(0, ${fc(s.Z2[j])}) = ${fc(s.A2[j])}  ${tag}</span>\n`;
+      t += `<span class="${cls}">Neuron ${j+1}:  a_${j+1} = max(0, ${fc(s.Z2[j])}) = ${fc(s.A2[j])}  ${tag}</span>\n`;
     }
     t += `\nActivation output: [${s.A2.map(a=>fc(a)).join(', ')}]`;
     t += `\nThese values feed into the output layer.`;
@@ -1108,14 +1134,24 @@ function getSteps(s) {
   phase: 'forward', title: 'Output: Weighted Sum + Linear Activation',
   formula: 'ŷ = f(z) = z = Σ_i (a_i × w_i) + b',
   calc: (() => {
+    let t = `Variable definitions:\n`;
+    t += `  a_i = activation from Layer 2 neuron i (ReLU output)\n`;
+    t += `  w_i = output layer weight from Layer 2 neuron i → output\n`;
+    t += `  b   = output layer bias (single value)\n`;
+    t += `  z   = weighted sum (raw score) at the output\n`;
+    t += `  f() = activation function — here it's LINEAR (identity)\n`;
+    t += `  ŷ   = the network's final prediction (standardized)\n\n`;
+    t += `Output layer parameters (hardcoded for the demo):\n`;
+    t += `  W3 = [${fw(W3[0])}, ${fw(W3[1])}, ${fw(W3[2])}]   b3 = ${fw(b3)}\n\n`;
+    t += `─── Calculation ───\n\n`;
     const terms = [];
     for (let i = 0; i < 3; i++) terms.push(`${fc(s.A2[i])}×${fw(W3[i])}`);
-    let t = `Weighted sum:\n  z = ${terms.join(' + ')} + ${fw(b3)}\n`;
+    t += `Weighted sum:\n  z = ${terms.join(' + ')} + ${fw(b3)}\n`;
     const vals = s.A2.map((a,i) => fc(a * W3[i]));
     t += `    = ${vals.join(' + ')} + ${fw(b3)}\n`;
     t += `    = <span class="result">${fc(s.Z3)}</span>\n\n`;
     t += `Linear activation:\n  ŷ = f(z) = z = <span class="result">${fc(s.yPred)}</span>\n\n`;
-    t += `(Linear just passes the value through unchanged)`;
+    t += `(Linear just passes the value through unchanged — no squashing)`;
     return t;
   })(),
   explain: `<p>The single output neuron computes another weighted sum. Then the <strong>Linear activation</strong> (identity function) passes it through unchanged: f(z) = z.</p>
@@ -1140,7 +1176,18 @@ function getSteps(s) {
 {
   phase: 'loss', title: 'Loss: Mean Squared Error (MSE)',
   formula: 'L = (y_true - ŷ)²',
-  calc: `L = (y_true - ŷ)²\n  = (${f4(s.yTrue)} - ${f3(s.yPred)})²\n  = (${f4(s.yTrue - s.yPred)})²\n  = <span class="result">${f4(s.loss)}</span>`,
+  calc: `Variable definitions:
+  y_true = the actual target value (standardized Revenue)
+  ŷ      = the network's prediction (standardized)
+  L      = loss (a single number measuring "how wrong")
+  ()²    = squaring — makes errors positive + amplifies big ones
+
+─── Calculation ───
+
+L = (y_true - ŷ)²
+  = (${f4(s.yTrue)} - ${f3(s.yPred)})²
+  = (${f4(s.yTrue - s.yPred)})²
+  = <span class="result">${f4(s.loss)}</span>`,
   explain: `<p><strong>Mean Squared Error</strong> measures how far off our prediction is from the true value. If you've done any statistics or regression, this is the same squared-residual you know from OLS -- just applied one sample at a time.</p>
 <p>Why square it?</p>
 <p>1. All errors become positive (whether we overestimate or underestimate)<br>
@@ -1204,7 +1251,20 @@ function getSteps(s) {
     <div class="ref-label">Where used</div>
     <div class="ref-value">∂L/∂ŷ = -2(y_true - ŷ)</div>
   </div>`,
-  calc: `∂L/∂ŷ = -2 × (y_true - ŷ)\n        = -2 × (${f4(s.yTrue)} - ${f3(s.yPred)})\n        = -2 × (${f4(s.yTrue - s.yPred)})\n        = <span class="result">${f3(s.dLdy)}</span>\n\n${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!'}`,
+  calc: `Variable definitions:
+  ∂L/∂ŷ  = "sensitivity score" — how loss changes when ŷ changes
+  y_true = the target value (from data)
+  ŷ      = the network's prediction
+  -2     = comes from differentiating the squared loss (chain rule)
+
+─── Calculation ───
+
+∂L/∂ŷ = -2 × (y_true - ŷ)
+      = -2 × (${f4(s.yTrue)} - ${f3(s.yPred)})
+      = -2 × (${f4(s.yTrue - s.yPred)})
+      = <span class="result">${f3(s.dLdy)}</span>
+
+${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!'}`,
   explain: `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. It answers: "If I nudge this input by a tiny amount, how much does the output change?" Think of it like a <em>marginal effect</em> in statistics -- it tells you the rate of change.</p>
 <p>Here, ∂L/∂ŷ = <strong>${f3(s.dLdy)}</strong> means: for every 1-unit increase in our prediction ŷ, the loss changes by about ${f3(Math.abs(s.dLdy))} units. ${s.dLdy > 0 ? 'It\'s <strong>positive</strong>, so increasing ŷ makes things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'It\'s <strong>negative</strong>, so increasing ŷ actually reduces the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero -- our prediction is perfect!'}</p>
 <p><strong>Why do we care?</strong> This single number launches the entire backward pass. It's the starting signal that will flow through every layer, telling each weight: "Here's how much you personally contributed to the error, and which direction to change."</p>
@@ -1244,7 +1304,14 @@ function getSteps(s) {
     <div class="ref-value">∂L/∂w_i = <strong>a_i</strong> × ∂L/∂ŷ\n∂L/∂a_i = <strong>w_i</strong> × ∂L/∂ŷ</div>
   </div>`,
   calc: (() => {
-    let t = `Incoming gradient: ∂L/∂ŷ = ${f3(s.dLdy)}\n`;
+    let t = `Variable definitions:\n`;
+    t += `  a_i    = activation from Layer 2 neuron i\n`;
+    t += `  w_i    = output layer weight from Layer 2 neuron i → output\n`;
+    t += `  b      = output layer bias\n`;
+    t += `  ∂L/∂ŷ  = incoming gradient from previous step (loss gradient)\n`;
+    t += `  ∂L/∂w_i = sensitivity of loss to weight w_i (what we're computing)\n`;
+    t += `  ∂L/∂a_i = sensitivity passed BACK to Layer 2 (for next step)\n\n`;
+    t += `Incoming gradient: ∂L/∂ŷ = ${f3(s.dLdy)}\n`;
     t += `(Linear backward: gradient passes through unchanged)\n\n`;
     t += `Layer 2 activations (a_i) used in weight gradients:\n`;
     for (let i = 0; i < 3; i++) {
@@ -1304,7 +1371,14 @@ function getSteps(s) {
     <div class="ref-value">ReLU gate uses <strong>z</strong> (alive if z>0)\nWeight grad uses <strong>a_i</strong> (Layer 1 outputs)</div>
   </div>`,
   calc: (() => {
-    let t = `ReLU 2 backward (gate gradients through):\n`;
+    let t = `Variable definitions:\n`;
+    t += `  z_j     = pre-activation from forward pass (used to gate ReLU)\n`;
+    t += `  a_i     = activation from Layer 1 (used for weight gradients)\n`;
+    t += `  W2[i][j]= weight from Layer 1 neuron i → Layer 2 neuron j\n`;
+    t += `  ∂L/∂a_j = incoming gradient (for Layer 2 activations)\n`;
+    t += `  ∂L/∂z_j = gradient AFTER ReLU gate (next step uses this)\n`;
+    t += `  ∂L/∂w_ij= sensitivity of loss to weight W2[i][j] (output)\n\n`;
+    t += `ReLU 2 backward (gate gradients through):\n`;
     for (let j = 0; j < 3; j++) {
       const alive = s.Z2[j] > 0;
       const cls = alive ? 'alive' : 'dead';
@@ -1381,16 +1455,23 @@ function getSteps(s) {
     <div class="ref-value">ReLU gate uses <strong>z</strong> (alive if z>0)\nWeight grad uses <strong>x</strong> (the input)</div>
   </div>`,
   calc: (() => {
-    let t = `ReLU 1 backward:\n`;
+    let t = `Variable definitions:\n`;
+    t += `  z_i     = pre-activation from forward pass (used to gate ReLU)\n`;
+    t += `  x       = the standardized input value (Ad Spend → x)\n`;
+    t += `  ∂L/∂a_i = incoming gradient (for Layer 1 activations)\n`;
+    t += `  ∂L/∂z_i = gradient AFTER ReLU gate\n`;
+    t += `  ∂L/∂w_i = sensitivity of loss to weight W1[i] (output)\n`;
+    t += `  ∂L/∂b_i = sensitivity of loss to bias b1[i] (output)\n\n`;
+    t += `ReLU 1 backward (gate gradients through):\n`;
     for (let i = 0; i < 3; i++) {
       const alive = s.Z1[i] > 0;
       const cls = alive ? 'alive' : 'dead';
       t += `  <span class="${cls}">∂L/∂z${i+1}: z=${fc(s.Z1[i])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ1[i])}</span>\n`;
     }
-    t += `\nDense 1 weight gradients:\n`;
+    t += `\nDense 1 weight gradients (∂L/∂w_i = x × ∂L/∂z_i):\n`;
     for (let i = 0; i < 3; i++)
       t += `  ∂L/∂w${i+1} = x × ∂L/∂z${i+1} = ${fw(s.x)} × ${fc(s.dZ1[i])} = <span class="result">${fc(s.dW1g[i])}</span>\n`;
-    t += `\nBias gradients:\n`;
+    t += `\nBias gradients (∂L/∂b_i = ∂L/∂z_i):\n`;
     for (let i = 0; i < 3; i++)
       t += `  ∂L/∂b${i+1} = <span class="result">${fc(s.db1g[i])}</span>\n`;
     t += `\nBackpropagation complete! We now have gradients\nfor ALL 22 parameters in the network.`;
@@ -1418,7 +1499,14 @@ function getSteps(s) {
   phase: 'update', title: 'Weight & Bias Update',
   formula: 'w_new = w_old - lr × ∂L/∂w\n(learning rate = ' + LR + ')',
   calc: (() => {
-    let t = `Learning rate: ${LR}\n\n`;
+    let t = `Variable definitions:\n`;
+    t += `  w_old   = current weight value (BEFORE update)\n`;
+    t += `  w_new   = updated weight value (AFTER update)\n`;
+    t += `  lr      = learning rate (step size for each update)\n`;
+    t += `  ∂L/∂w   = gradient — sensitivity of loss to this weight\n`;
+    t += `  Subtract because gradient points UPHILL (away from min);\n`;
+    t += `  we move in the OPPOSITE direction = downhill = lower loss.\n\n`;
+    t += `Learning rate: ${LR}\n\n`;
     t += `═══ Layer 1 Weights ═══\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W1n[i];
@@ -1726,9 +1814,11 @@ document.addEventListener('keydown', e => {
 
 getEl('x-slider').addEventListener('input', function() {
   const v = parseFloat(this.value);
+  const yStd = Math.sin(2 * Math.PI * v);
   getEl('x-val').textContent = '$' + (v * 50 + 50).toFixed(0) + 'k';
   getEl('x-std-val').textContent = v.toFixed(2);
-  getEl('y-true-val').textContent = '$' + (Math.sin(2 * Math.PI * v) * 50 + 50).toFixed(0) + 'k';
+  getEl('y-true-val').textContent = '$' + (yStd * 50 + 50).toFixed(0) + 'k';
+  getEl('y-std-val').textContent = yStd.toFixed(2);
   renderStep();
 });
 
