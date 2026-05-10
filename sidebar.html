@@ -237,6 +237,40 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   overflow: hidden;
 }
 #network-svg { width: 100%; height: auto; display: block; }
+#network-svg-fwd { width: 100%; height: auto; display: block; }
+/* Default: single-network layout (forward snapshot hidden) */
+.network-split { display: block; }
+/* On backprop steps, the wrapper toggles .split for side-by-side networks */
+.network-split.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.network-mini-title {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--gray-dark);
+  padding: 4px 6px 8px;
+  text-align: center;
+  letter-spacing: .02em;
+}
+.network-wrap-fwd {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius);
+  padding: 6px 6px 10px;
+}
+.network-split.split .network-wrap {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius);
+  padding: 6px 6px 10px;
+}
+@media (max-width: 900px) {
+  /* On mobile, stack instead of side-by-side */
+  .network-split.split { grid-template-columns: 1fr; }
+}
 
 .edge { stroke: #d1d5db; stroke-width: 1.5; fill: none; transition: all .3s; }
 .edge.active-fwd { stroke: var(--blue); stroke-width: 2.5; }
@@ -259,6 +293,9 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .node-circle.active-bwd { stroke: var(--orange); fill: var(--orange-light); }
 .node-circle.active-update { stroke: var(--purple); fill: var(--purple-light); }
 .node-circle.dimmed { stroke: #e5e7eb; fill: #fafafa; }
+/* Forward-snapshot "shown but not focused" style — readable values without grabbing attention */
+.node-circle.snap-shown { stroke: #93c5fd; fill: #f0f9ff; stroke-width: 1.5; }
+.edge.snap-dim { stroke: #93c5fd; stroke-width: 1; opacity: 0.55; }
 
 .node-label {
   font-size: 11px; font-weight: 600; fill: var(--text);
@@ -530,11 +567,20 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
     </svg>
   </div>
 
-  <div class="network-wrap" id="network-wrap">
-    <svg id="network-svg" viewBox="0 0 1200 520" style="touch-action: none;"></svg>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;font-size:.72rem;color:var(--gray);">
-      <span>💡 <strong>Tip:</strong> Click and drag any neuron to reposition it (helps if labels overlap)</span>
-      <button id="reset-layout-btn" type="button" style="font-size:.7rem;padding:3px 10px;border:1px solid #d1d5db;background:white;border-radius:4px;cursor:pointer;color:var(--gray-dark);">Reset Layout</button>
+  <div class="network-split" id="network-split">
+    <!-- LEFT: forward-pass reference snapshot, only shown on backprop steps -->
+    <div class="network-wrap network-wrap-fwd" id="network-wrap-fwd" style="display:none;">
+      <div class="network-mini-title">📥 Forward Pass — values being used</div>
+      <svg id="network-svg-fwd" viewBox="0 0 1200 520" style="width:100%;height:auto;"></svg>
+    </div>
+    <!-- RIGHT: main network (becomes the "backward" diagram on backprop steps) -->
+    <div class="network-wrap" id="network-wrap">
+      <div class="network-mini-title" id="network-main-title" style="display:none;">📤 Backward Pass — gradient flow</div>
+      <svg id="network-svg" viewBox="0 0 1200 520" style="touch-action: none;"></svg>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;font-size:.72rem;color:var(--gray);">
+        <span>💡 <strong>Tip:</strong> Click and drag any neuron to reposition it (helps if labels overlap)</span>
+        <button id="reset-layout-btn" type="button" style="font-size:.7rem;padding:3px 10px;border:1px solid #d1d5db;background:white;border-radius:4px;cursor:pointer;color:var(--gray-dark);">Reset Layout</button>
+      </div>
     </div>
   </div>
 
@@ -801,6 +847,223 @@ function el(tag, attrs, text) {
   for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
   if (text !== undefined) e.textContent = text;
   return e;
+}
+
+// ────────────────────────────────────────────────────────────────
+// FORWARD SNAPSHOT SVG — read-only mini-diagram shown to the left of
+// the main network during backprop steps. Uses the same layout but
+// all element IDs are prefixed with "f-" so it can be driven
+// independently of the main (backward) network.
+// ────────────────────────────────────────────────────────────────
+
+function fid(prefix, base) { return 'f-' + base; }
+function fwdNid(li, ni) { return 'f-n-' + li + '-' + ni; }
+function fwdEid(li, fi, ti) { return 'f-e-' + li + '-' + fi + '-' + ti; }
+
+function buildForwardSVG() {
+  const svg = document.getElementById('network-svg-fwd');
+  if (!svg) return;
+  svg.innerHTML = '';
+
+  // layer titles
+  LAYERS.forEach(L => {
+    const cx = L.nodes[0].x;
+    svg.appendChild(el('text', { x: cx, y: 22, class: 'layer-title' }, L.label));
+  });
+  svg.appendChild(el('text', { x: LOSS_POS.x, y: 22, class: 'layer-title' }, 'Loss'));
+
+  // edges (no drag/interaction; static reference)
+  for (let li = 0; li < LAYERS.length - 1; li++) {
+    const from = LAYERS[li].nodes, to = LAYERS[li+1].nodes;
+    const numFrom = from.length;
+    from.forEach((f, fi) => to.forEach((t, ti) => {
+      svg.appendChild(el('line', {
+        x1: f.x + R, y1: f.y, x2: t.x - R, y2: t.y,
+        class: 'edge', id: fwdEid(li, fi, ti)
+      }));
+      const frac = numFrom > 1 ? (0.22 + 0.56 * fi / (numFrom - 1)) : 0.5;
+      const wlx = f.x + R + frac * ((t.x - R) - (f.x + R));
+      const wly = f.y + frac * (t.y - f.y);
+      svg.appendChild(el('text', {
+        x: wlx, y: wly - 6, class: 'weight-label', id: 'f-wl-' + 'e-' + li + '-' + fi + '-' + ti
+      }, ''));
+    }));
+  }
+
+  // loss connection
+  const outN = LAYERS[3].nodes[0];
+  svg.appendChild(el('line', {
+    x1: outN.x + R, y1: outN.y, x2: LOSS_POS.x - 18, y2: LOSS_POS.y,
+    class: 'edge', id: 'f-e-loss'
+  }));
+
+  // nodes (no drag handlers)
+  LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+    const g = el('g', {
+      id: 'f-g-' + 'n-' + li + '-' + ni,
+      transform: `translate(${n.x},${n.y})`
+    });
+    g.appendChild(el('circle', { r: R, class: 'node-circle', id: 'f-c-' + 'n-' + li + '-' + ni }));
+    g.appendChild(el('text', { y: -2, class: 'node-label', id: 'f-lbl-' + 'n-' + li + '-' + ni }, ''));
+    g.appendChild(el('text', { y: 12, class: 'node-value', id: 'f-val-' + 'n-' + li + '-' + ni }, ''));
+    svg.appendChild(g);
+  }));
+
+  // loss node
+  const lg = el('g', { id: 'f-g-loss', transform: `translate(${LOSS_POS.x},${LOSS_POS.y})` });
+  lg.appendChild(el('rect', {
+    x: -18, y: -18, width: 36, height: 36, rx: 6,
+    fill: 'white', stroke: '#9ca3af', 'stroke-width': 2.5, id: 'f-c-loss'
+  }));
+  lg.appendChild(el('text', { y: -2, class: 'node-label', id: 'f-lbl-loss' }, 'L'));
+  lg.appendChild(el('text', { y: 14, class: 'node-value', id: 'f-val-loss' }, ''));
+  svg.appendChild(lg);
+
+  // bias labels
+  LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+    svg.appendChild(el('text', {
+      x: n.x, y: n.y + R + 14,
+      class: 'weight-label', id: 'f-bias-' + 'n-' + li + '-' + ni,
+      style: 'font-size:8px'
+    }, ''));
+  }));
+}
+
+// Helpers operating on the forward SVG
+function fwdGet(id) { return document.getElementById(id); }
+
+function fwdDimAll() {
+  LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
+    const c = fwdGet('f-c-n-'+li+'-'+ni); if (c) c.className.baseVal = 'node-circle dimmed';
+    const l = fwdGet('f-lbl-n-'+li+'-'+ni); if (l) l.textContent = '';
+    const v = fwdGet('f-val-n-'+li+'-'+ni); if (v) v.textContent = '';
+    const b = fwdGet('f-bias-n-'+li+'-'+ni); if (b) b.textContent = '';
+  }));
+  for (let li = 0; li < LAYERS.length - 1; li++) {
+    const from = LAYERS[li].nodes, to = LAYERS[li+1].nodes;
+    from.forEach((_, fi) => to.forEach((_, ti) => {
+      const e = fwdGet('f-e-'+li+'-'+fi+'-'+ti); if (e) e.className.baseVal = 'edge dimmed';
+      const wl = fwdGet('f-wl-e-'+li+'-'+fi+'-'+ti);
+      if (wl) { wl.textContent = ''; wl.className.baseVal = 'weight-label'; }
+    }));
+  }
+  const eLoss = fwdGet('f-e-loss'); if (eLoss) eLoss.className.baseVal = 'edge dimmed';
+  const lblLoss = fwdGet('f-lbl-loss'); if (lblLoss) lblLoss.textContent = '';
+  const valLoss = fwdGet('f-val-loss'); if (valLoss) valLoss.textContent = '';
+}
+
+function fwdActivateNode(li, ni, cls, lbl, val) {
+  const c = fwdGet('f-c-n-'+li+'-'+ni); if (c) c.className.baseVal = 'node-circle active ' + cls;
+  const l = fwdGet('f-lbl-n-'+li+'-'+ni); if (l) l.textContent = lbl;
+  const v = fwdGet('f-val-n-'+li+'-'+ni); if (v) v.textContent = val;
+}
+function fwdActivateEdge(li, fi, ti, cls) {
+  const e = fwdGet('f-e-'+li+'-'+fi+'-'+ti); if (e) e.className.baseVal = 'edge ' + cls;
+}
+function fwdShowWeight(li, fi, ti, txt, active) {
+  const wl = fwdGet('f-wl-e-'+li+'-'+fi+'-'+ti);
+  if (wl) {
+    wl.textContent = txt;
+    wl.className.baseVal = 'weight-label' + (active ? ' active' : '');
+  }
+}
+function fwdShowBias(li, ni, txt) {
+  const b = fwdGet('f-bias-n-'+li+'-'+ni); if (b) b.textContent = txt;
+}
+
+// Populate the forward SVG to show ALL forward-pass values, then
+// highlight the specific neurons/edges whose values are *used* in
+// the current backprop step (the "in focus" layer).
+//
+// focusLayer: 'output' (Output Layer backprop) — highlights a^[2], W^[3]
+//             'h2'     (Through ReLU 2/Dense 2) — highlights z^[2], a^[1], W^[2]
+//             'h1'     (Through ReLU 1/Dense 1) — highlights z^[1], x, W^[1]
+//             'loss'   (Loss gradient step)     — highlights ŷ, y_true
+//             'all'    (intro / update steps)   — show everything dimmed-but-readable
+function populateForwardSnapshot(s, focusLayer) {
+  if (!document.getElementById('network-svg-fwd')) return;
+  fwdDimAll();
+
+  // Input node — always show the input value
+  fwdActivateNode(0, 0, focusLayer === 'h1' ? 'active-fwd' : 'snap-shown',
+    'x', fw(s.x));
+
+  // Layer 1 nodes — show pre-activations (z) or post-activations (a) depending on focus
+  for (let i = 0; i < 3; i++) {
+    const showA = focusLayer === 'h2' || focusLayer === 'all';
+    const showZ = focusLayer === 'h1';
+    const cls = (focusLayer === 'h1' || focusLayer === 'h2') ? 'active-fwd' : 'snap-shown';
+    const lbl = showZ ? 'z^[1]_'+(i+1) : 'a^[1]_'+(i+1);
+    const val = showZ ? fc(s.Z1[i]) : fc(s.A1[i]);
+    fwdActivateNode(1, i, cls, lbl, val);
+    fwdShowBias(1, i, 'b^[1]_'+(i+1)+'='+fw(b1[i]));
+  }
+
+  // Layer 2 nodes — show pre-activations (z) or post-activations (a) depending on focus
+  for (let j = 0; j < 3; j++) {
+    const showZ = focusLayer === 'h2';
+    const cls = (focusLayer === 'h2' || focusLayer === 'output') ? 'active-fwd' : 'snap-shown';
+    const lbl = showZ ? 'z^[2]_'+(j+1) : 'a^[2]_'+(j+1);
+    const val = showZ ? fc(s.Z2[j]) : fc(s.A2[j]);
+    fwdActivateNode(2, j, cls, lbl, val);
+    fwdShowBias(2, j, 'b^[2]_'+(j+1)+'='+fw(b2[j]));
+  }
+
+  // Output node — show ŷ
+  fwdActivateNode(3, 0, focusLayer === 'output' || focusLayer === 'loss' ? 'active-fwd' : 'snap-shown',
+    'ŷ', fc(s.yPred));
+  fwdShowBias(3, 0, 'b^[3]='+fw(b3));
+
+  // Loss node — show L (sample MSE)
+  const lossCircle = fwdGet('f-c-loss');
+  if (lossCircle) {
+    lossCircle.setAttribute('stroke', focusLayer === 'loss' ? 'var(--red)' : '#9ca3af');
+    lossCircle.setAttribute('fill', focusLayer === 'loss' ? 'var(--red-light)' : 'white');
+  }
+  const eLossF = fwdGet('f-e-loss');
+  if (eLossF) eLossF.className.baseVal = 'edge ' + (focusLayer === 'loss' ? 'flow-fwd' : 'snap-dim');
+  const lblLossF = fwdGet('f-lbl-loss'); if (lblLossF) lblLossF.textContent = 'L';
+  const valLossF = fwdGet('f-val-loss'); if (valLossF) valLossF.textContent = f4(s.lossMSE);
+
+  // Edge weights (Input → Hidden 1)
+  for (let i = 0; i < 3; i++) {
+    fwdActivateEdge(0, 0, i, focusLayer === 'h1' ? 'flow-fwd' : 'snap-dim');
+    fwdShowWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(W1[i]), focusLayer === 'h1');
+  }
+
+  // Edge weights (Hidden 1 → Hidden 2) — 9 edges
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      fwdActivateEdge(1, i, j, focusLayer === 'h2' ? 'flow-fwd' : 'snap-dim');
+      fwdShowWeight(1, i, j, 'W^[2]_{'+(i+1)+','+(j+1)+'}='+fw(W2[i][j]), focusLayer === 'h2');
+    }
+  }
+
+  // Edge weights (Hidden 2 → Output) — 3 edges
+  for (let i = 0; i < 3; i++) {
+    fwdActivateEdge(2, i, 0, focusLayer === 'output' ? 'flow-fwd' : 'snap-dim');
+    fwdShowWeight(2, i, 0, 'W^[3]_'+(i+1)+'='+fw(W3[i]), focusLayer === 'output');
+  }
+}
+
+// Toggle the side-by-side split layout on/off
+function setSplitLayout(on, mainTitle) {
+  const split = document.getElementById('network-split');
+  const fwdWrap = document.getElementById('network-wrap-fwd');
+  const mainTitleEl = document.getElementById('network-main-title');
+  if (!split || !fwdWrap) return;
+  if (on) {
+    split.classList.add('split');
+    fwdWrap.style.display = '';
+    if (mainTitleEl) {
+      mainTitleEl.textContent = mainTitle || '📤 Backward Pass — gradient flow';
+      mainTitleEl.style.display = '';
+    }
+  } else {
+    split.classList.remove('split');
+    fwdWrap.style.display = 'none';
+    if (mainTitleEl) mainTitleEl.style.display = 'none';
+  }
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -2197,7 +2460,23 @@ function renderStep() {
   getEl('btn-prev').disabled = currentStep === 0;
   getEl('btn-next').disabled = currentStep === steps.length - 1;
 
-  // render SVG
+  // ── Forward-snapshot side-by-side: enabled on backprop weight/loss-gradient steps ──
+  // Map step title to a focus layer for the forward snapshot.
+  const focusByTitle = {
+    'Backprop Start: Loss Gradient': 'loss',
+    'Backprop: Output Layer (Dense 3)': 'output',
+    'Backprop: Through ReLU 2 & Dense Layer 2': 'h2',
+    'Backprop: Through ReLU 1 & Dense Layer 1': 'h1'
+  };
+  const focusLayer = focusByTitle[step.title];
+  if (focusLayer) {
+    setSplitLayout(true, '📤 Backward Pass — gradient flow');
+    populateForwardSnapshot(state, focusLayer);
+  } else {
+    setSplitLayout(false);
+  }
+
+  // render SVG (main / backward network)
   step.render(state);
 }
 
@@ -2232,6 +2511,7 @@ getEl('x-slider').addEventListener('input', function() {
 // ════════════════════════════════════════════════════════════════
 
 buildSVG();
+buildForwardSVG();
 buildStepBar();
 renderStep();
 
