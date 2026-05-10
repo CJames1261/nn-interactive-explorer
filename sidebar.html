@@ -1692,6 +1692,13 @@ THE END RESULT:
     t += `what we want, since the network underpredicted (\\(\\hat{y}\\) = ${fc(s.yPred)}).\n`;
     t += `\nBias gradient (\\(\\partial L / \\partial b^{[3]} = \\partial L / \\partial \\hat{y}\\) — bias coefficient is 1):\n`;
     t += `  \\(\\partial L / \\partial b^{[3]}\\) = <span class="result">${fc(s.db3g)}</span>\n`;
+    // Preview of the bias update applied in Step 17
+    {
+      const grad = s.db3g;
+      const prod = LR * grad;
+      t += `\n  Where it goes next (Step 17 update for the output bias):\n`;
+      t += `    \\(b^{[3]}\\):  ${fw(b3)} − (${LR} × ${fc(grad)}) = ${fw(b3)} − (${fc(prod)}) = <span class="result">${fc(s.b3n)}</span>   ← new \\(b^{[3]}\\)\n`;
+    }
     t += `\nGradient passed back to Layer 2 (\\(\\partial L / \\partial a^{[2]}_i = W^{[3]}_i \\cdot \\partial L / \\partial \\hat{y}\\)):\n`;
     for (let i = 0; i < 3; i++)
       t += `  \\(\\partial L / \\partial a^{[2]}_${i+1}\\) = ${fw(W3[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dA2[i])}</span>\n`;
@@ -1771,10 +1778,33 @@ THE END RESULT:
       }
       t += `\n`;
     }
-    t += `Dense 2 bias gradients (\\(\\partial L / \\partial b^{[2]}_j = \\partial L / \\partial z^{[2]}_j\\) — bias coefficient is 1):\n`;
+    // Preview the 9 W^[2] updates Step 17 will apply with these gradients
+    t += `\n  Where these 9 weight gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(W^{[2]}_{i,j,\\text{new}} = W^{[2]}_{i,j,\\text{old}} - \\eta \\cdot \\partial L / \\partial W^{[2]}_{i,j}\\)  with \\(\\eta\\) = ${LR}\n`;
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        const grad = s.dW2[i][j];
+        const prod = LR * grad;
+        const wOld = W2[i][j];
+        const wNew = s.W2n[i][j];
+        t += `    \\(W^{[2]}_{${i+1},${j+1}}\\):  ${fw(wOld)} − (${LR} × ${fc(grad)}) = ${fw(wOld)} − (${fc(prod)}) = <span class="result">${fc(wNew)}</span>\n`;
+      }
+      if (i < 2) t += `\n`;
+    }
+    t += `\nDense 2 bias gradients (\\(\\partial L / \\partial b^{[2]}_j = \\partial L / \\partial z^{[2]}_j\\) — bias coefficient is 1):\n`;
     for (let j = 0; j < 3; j++) {
       const cls = s.Z2[j] > 0 ? 'alive' : 'dead';
       t += `  <span class="${cls}">\\(\\partial L / \\partial b^{[2]}_${j+1}\\) = <span class="result">${fc(s.dZ2[j])}</span></span>\n`;
+    }
+    // Preview the 3 b^[2] updates Step 17 will apply
+    t += `\n  Where these 3 bias gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(b^{[2]}_{j,\\text{new}} = b^{[2]}_{j,\\text{old}} - \\eta \\cdot \\partial L / \\partial b^{[2]}_j\\)\n`;
+    for (let j = 0; j < 3; j++) {
+      const grad = s.db2g[j];
+      const prod = LR * grad;
+      const bOld = b2[j];
+      const bNew = s.b2n[j];
+      t += `    \\(b^{[2]}_${j+1}\\):  ${fw(bOld)} − (${LR} × ${fc(grad)}) = ${fw(bOld)} − (${fc(prod)}) = <span class="result">${fc(bNew)}</span>\n`;
     }
     t += `\nGradient passed back to Layer 1 (chain rule through \\(W^{[2]}\\)):\n`;
     t += `Formula: \\(\\partial L / \\partial a^{[1]}_i = \\sum_j W^{[2]}_{ij} \\cdot \\partial L / \\partial z^{[2]}_j\\)\n`;
@@ -1854,10 +1884,30 @@ THE END RESULT:
     t += `(\\(\\lambda\\) = ${s.lambda})\n\n`;
     for (let i = 0; i < 3; i++)
       t += `  \\(\\partial L / \\partial W^{[1]}_${i+1}\\) = ${fw(s.x)}×${fc(s.dZ1[i])} + 2×${s.lambda}×${fw(W1[i])}  =  ${fc(s.dW1data[i])} + ${fc(s.dW1L2[i])} = <span class="result">${fc(s.dW1g[i])}</span>\n`;
+    // Preview the 3 W^[1] updates Step 17 will apply
+    t += `\n  Where these 3 weight gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(W^{[1]}_{i,\\text{new}} = W^{[1]}_{i,\\text{old}} - \\eta \\cdot \\partial L / \\partial W^{[1]}_i\\)  with \\(\\eta\\) = ${LR}\n`;
+    for (let i = 0; i < 3; i++) {
+      const grad = s.dW1g[i];
+      const prod = LR * grad;
+      const wOld = W1[i];
+      const wNew = s.W1n[i];
+      t += `    \\(W^{[1]}_${i+1}\\):  ${fw(wOld)} − (${LR} × ${fc(grad)}) = ${fw(wOld)} − (${fc(prod)}) = <span class="result">${fc(wNew)}</span>\n`;
+    }
     t += `\nDense 1 bias gradients (\\(\\partial L / \\partial b^{[1]}_i = \\partial L / \\partial z^{[1]}_i\\)):\n`;
     for (let i = 0; i < 3; i++)
       t += `  \\(\\partial L / \\partial b^{[1]}_${i+1}\\) = <span class="result">${fc(s.db1g[i])}</span>\n`;
-    t += `\nBackpropagation complete! We now have gradients\nfor ALL 22 parameters in the network.`;
+    // Preview the 3 b^[1] updates Step 17 will apply
+    t += `\n  Where these 3 bias gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(b^{[1]}_{i,\\text{new}} = b^{[1]}_{i,\\text{old}} - \\eta \\cdot \\partial L / \\partial b^{[1]}_i\\)\n`;
+    for (let i = 0; i < 3; i++) {
+      const grad = s.db1g[i];
+      const prod = LR * grad;
+      const bOld = b1[i];
+      const bNew = s.b1n[i];
+      t += `    \\(b^{[1]}_${i+1}\\):  ${fw(bOld)} − (${LR} × ${fc(grad)}) = ${fw(bOld)} − (${fc(prod)}) = <span class="result">${fc(bNew)}</span>\n`;
+    }
+    t += `\nBackpropagation complete! We now have gradients\nfor ALL 22 parameters in the network — and every one of them\nhas been previewed against the Step 17 update formula above.`;
     return t;
   })(),
   explain: `<p><strong>The blame reaches the first layer.</strong> Same pattern: ReLU gates the gradient, then Dense computes how sensitive each weight is to the error.</p>
