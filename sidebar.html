@@ -1250,6 +1250,49 @@ For a batch of N samples: L = (1/N) × Σ_n L_sample_n`,
   was wrong (loss = ${f4(s.loss)}). But which weights are
   to blame? And by how much should we change each one?
 
+THE BIG EQUATION (where all 22 parameters live):
+  Building from input forward, the network's prediction ŷ is:
+
+    Layer 1  (3 weights + 3 biases = 6 parameters):
+      z^[1]_1 = x · W^[1]_1 + b^[1]_1
+      z^[1]_2 = x · W^[1]_2 + b^[1]_2
+      z^[1]_3 = x · W^[1]_3 + b^[1]_3
+      a^[1]_i = max(0, z^[1]_i)            (ReLU — no params)
+
+    Layer 2  (9 weights + 3 biases = 12 parameters):
+      z^[2]_1 = a^[1]_1·W^[2]_11 + a^[1]_2·W^[2]_21 + a^[1]_3·W^[2]_31 + b^[2]_1
+      z^[2]_2 = a^[1]_1·W^[2]_12 + a^[1]_2·W^[2]_22 + a^[1]_3·W^[2]_32 + b^[2]_2
+      z^[2]_3 = a^[1]_1·W^[2]_13 + a^[1]_2·W^[2]_23 + a^[1]_3·W^[2]_33 + b^[2]_3
+      a^[2]_j = max(0, z^[2]_j)            (ReLU — no params)
+
+    Output  (3 weights + 1 bias = 4 parameters):
+      ŷ = a^[2]_1·W^[3]_1 + a^[2]_2·W^[3]_2 + a^[2]_3·W^[3]_3 + b^[3]
+
+  And the loss is built on top:
+      L = (y_true - ŷ)²
+
+  If you substitute every a^[2], a^[1], z^[2], z^[1] back into ŷ,
+  you get ONE giant nested function — L is a function of these
+  22 variables (and nothing else, since x and y_true are given):
+
+      L = f( W^[1]_1, W^[1]_2, W^[1]_3,           ← 3 Layer 1 weights
+             b^[1]_1, b^[1]_2, b^[1]_3,           ← 3 Layer 1 biases
+             W^[2]_11, W^[2]_12, W^[2]_13,        ← 9 Layer 2 weights
+             W^[2]_21, W^[2]_22, W^[2]_23,
+             W^[2]_31, W^[2]_32, W^[2]_33,
+             b^[2]_1, b^[2]_2, b^[2]_3,           ← 3 Layer 2 biases
+             W^[3]_1, W^[3]_2, W^[3]_3,           ← 3 output weights
+             b^[3] )                              ← 1 output bias
+                                                    ── total: 22
+
+  THE OPTIMIZATION:
+    Training a neural network = finding values for these 22
+    variables that MINIMIZE L.
+
+    Backpropagation tells us, for each one of those 22 variables,
+    "if you nudge me up a tiny bit, L will go ___ by ___." Then
+    Step 15 actually nudges each one downhill.
+
 THE SOLUTION — BACKPROPAGATION:
   Walk the error BACKWARDS through the network, layer
   by layer, computing each weight's contribution to the
@@ -1293,6 +1336,7 @@ THE END RESULT:
     - size  → how much (the magnitude of the nudge)
   to reduce the error.`,
   explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights and biases to blame for an error — and by how much. It's the engine that makes learning possible.</p>
+<p><strong>The loss is one giant function of 22 variables.</strong> If you mentally substitute the forward pass back into itself, our prediction ŷ becomes a deeply nested expression involving <strong>all 22 parameters</strong>: the 15 weights and 7 biases. The loss <code>L = (y_true − ŷ)²</code> sits on top of that. So <code>L</code> is one function of 22 variables (with x and y_true fixed as data) — and our goal during training is to find values for those 22 variables that <strong>minimize L</strong>. The calc block above lays the full equation out layer by layer.</p>
 <p><strong>Why partial derivatives?</strong> We're computing one partial derivative <em>per parameter</em> (per weight and per bias) so we can measure how <strong>that specific parameter</strong> affects the prediction error if we increase or decrease it by a tiny amount. The "partial" part just means: the loss depends on MANY variables at once (all 22 in our network), so when we take the derivative with respect to ONE of them, we treat the other 21 as fixed.</p>
 <p><strong>Per-parameter, not per-node.</strong> A single neuron usually has MULTIPLE parameters — one bias, plus one weight for each incoming connection. Each parameter gets its own partial derivative. For example, a Hidden Layer 2 neuron has 3 incoming weights + 1 bias = 4 partial derivatives associated with it.</p>
 <p><strong>For statisticians:</strong> Think of backpropagation as computing the <em>partial derivative of the loss with respect to each parameter</em> — but for a multi-layer model. In simple linear regression you have one β per predictor; here we have 22 parameters spread across multiple layers, and we need a "marginal effect" for each one.</p>
