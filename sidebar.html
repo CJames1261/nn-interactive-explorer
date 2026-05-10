@@ -1911,19 +1911,19 @@ THE END RESULT:
     for (let i = 0; i < 3; i++) {
       const nw = s.W2n[i][0];
       const ch = nw - W2[i][0];
-      t += `  \\(W^{[2]}_{${i+1},1}\\): ${fw(W2[i][0])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(W^{[2]}_{${i+1},1}\\): ${fw(W2[i][0])} − ${LR}×${fc(s.dW2[i][0])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
     t += `\n═══ Layer 2 Biases (\\(b^{[2]}\\)) ═══\n`;
     for (let j = 0; j < 3; j++) {
       const nb = s.b2n[j];
       const ch = nb - b2[j];
-      t += `  \\(b^{[2]}_${j+1}\\): ${fw(b2[j])} → <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(b^{[2]}_${j+1}\\): ${fw(b2[j])} − ${LR}×${fc(s.db2g[j])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
     t += `\n═══ Output Layer Weights (\\(W^{[3]}\\)) ═══\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W3n[i];
       const ch = nw - W3[i];
-      t += `  \\(W^{[3]}_${i+1}\\): ${fw(W3[i])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(W^{[3]}_${i+1}\\): ${fw(W3[i])} − ${LR}×${fc(s.dW3[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
     t += `\n═══ Output Layer Bias (\\(b^{[3]}\\)) ═══\n`;
     {
