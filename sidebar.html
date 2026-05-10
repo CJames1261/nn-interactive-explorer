@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Neural Network Regression — Interactive Explorer (Sidebar)</title>
+<!-- KaTeX for LaTeX math rendering in formula bars -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
 <style>
 :root {
   --blue: #3b82f6; --blue-light: #dbeafe; --blue-dark: #1d4ed8;
@@ -335,10 +338,13 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .card-formula.backward { border-left-color: var(--orange); }
 .card-formula.update { border-left-color: var(--purple); }
 .formula-box {
-  background: #f0f4ff; border-radius: 6px; padding: 8px 12px;
+  background: #f0f4ff; border-radius: 6px; padding: 12px 14px;
   font-family: "Consolas","Fira Code",monospace; font-size: .85rem;
   margin-bottom: 8px; line-height: 1.6; color: var(--blue-dark);
+  overflow-x: auto;   /* allow horizontal scrolling for wide LaTeX equations */
 }
+.formula-box .katex { font-size: 1.05em; }
+.formula-box .katex-display { margin: 4px 0; }
 .formula-box.intro { background: #f0fdf4; color: #166534; }
 .formula-box.data { background: #f0fdfa; color: #134e4a; }
 .formula-box.loss { background: #fef2f2; color: #991b1b; }
@@ -900,7 +906,7 @@ function getSteps(s) {
 // ── 1: Data Preparation ──
 {
   phase: 'data', title: 'Data Preparation: Standardization',
-  formula: `StandardScaler:  x_scaled = (value − mean) / std_dev`,
+  formula: String.raw`$$\text{StandardScaler:}\quad x_{\text{scaled}} = \frac{\text{value} - \mu}{\sigma}`,
   calc: (() => {
     const xv = parseFloat(fw(s.x));
     const contextVals = [-0.84, -0.54, 0.34, 0.82];
@@ -991,7 +997,7 @@ function getSteps(s) {
 // ── 2: Dense Layer 1 Weighted Sum ──
 {
   phase: 'forward', title: 'Hidden Layer 1: Weighted Sum',
-  formula: 'z^[1]_i = x × W^[1]_i + b^[1]_i      (one z per neuron, i = 1, 2, 3)',
+  formula: String.raw`$$z^{[1]}_i = x \cdot W^{[1]}_i + b^{[1]}_i, \quad i \in \{1, 2, 3\}`,
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  x         = input value (the standardized row)\n`;
@@ -1033,7 +1039,7 @@ function getSteps(s) {
 // ── 3: ReLU 1 ──
 {
   phase: 'forward', title: 'Hidden Layer 1: ReLU Activation',
-  formula: 'a^[1]_i = max(0, z^[1]_i)',
+  formula: String.raw`$$a^{[1]}_i = \max(0,\, z^{[1]}_i)`,
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  z^[1]_i  = pre-activation (weighted sum) from previous step\n`;
@@ -1068,7 +1074,7 @@ function getSteps(s) {
 // ── 4: Dense Layer 2 ──
 {
   phase: 'forward', title: 'Hidden Layer 2: Weighted Sum',
-  formula: 'z^[2]_j = Σ_i (a^[1]_i × W^[2]_ij) + b^[2]_j',
+  formula: String.raw`$$z^{[2]}_j = \sum_i a^{[1]}_i \cdot W^{[2]}_{ij} + b^{[2]}_j`,
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  a^[1]_i  = activation from Layer 1 neuron i (the ReLU output)\n`;
@@ -1125,7 +1131,7 @@ function getSteps(s) {
 // ── 5: ReLU 2 ──
 {
   phase: 'forward', title: 'Hidden Layer 2: ReLU Activation',
-  formula: 'a^[2]_j = max(0, z^[2]_j)',
+  formula: String.raw`$$a^{[2]}_j = \max(0,\, z^{[2]}_j)`,
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  z^[2]_j = Layer 2 pre-activation from previous step\n`;
@@ -1161,7 +1167,7 @@ function getSteps(s) {
 // ── 6: Output Layer ──
 {
   phase: 'forward', title: 'Output: Weighted Sum + Linear Activation',
-  formula: 'z^[3] = Σ_i (a^[2]_i × W^[3]_i) + b^[3]      ŷ = f(z^[3]) = z^[3]    (linear / identity)',
+  formula: String.raw`$$z^{[3]} = \sum_i a^{[2]}_i \cdot W^{[3]}_i + b^{[3]} \qquad \hat{y} = f(z^{[3]}) = z^{[3]}\ \ \text{(linear)}`,
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  a^[2]_i = activation from Layer 2 neuron i (ReLU output)\n`;
@@ -1206,7 +1212,7 @@ function getSteps(s) {
 // ── 7: Loss ──
 {
   phase: 'loss', title: 'Loss: Mean Squared Error (MSE)',
-  formula: 'L_sample = (y_true - ŷ)²        (Mean is taken across the batch: L = (1/N) Σ L_sample)',
+  formula: String.raw`$$L_{\text{sample}} = (y_{\text{true}} - \hat{y})^2 \qquad L_{\text{batch}} = \tfrac{1}{N}\textstyle\sum_n L_{\text{sample},n}`,
   calc: `<div class="var-defs">Variable definitions:
   y_true   = the actual target value (standardized Revenue)
   ŷ        = the network's prediction (standardized)
@@ -1357,7 +1363,7 @@ THE END RESULT:
 // ── Loss Gradient ──
 {
   phase: 'backward', title: 'Backprop Start: Loss Gradient',
-  formula: '∂L/∂ŷ = -2(y_true - ŷ)',
+  formula: String.raw`$$\frac{\partial L}{\partial \hat{y}} = -2\,(y_{\text{true}} - \hat{y})`,
   ref: `<div class="ref-section">
     <div class="ref-label">y_true (target)</div>
     <div class="ref-value">${f4(s.yTrue)}</div>
@@ -1419,7 +1425,7 @@ Our companion Python code uses this batch form.`,
 // ── Backprop Output Layer ──
 {
   phase: 'backward', title: 'Backprop: Output Layer (Dense 3)',
-  formula: '∂L/∂W^[3]_i = a^[2]_i × ∂L/∂ŷ      ∂L/∂b^[3] = ∂L/∂ŷ      ∂L/∂a^[2]_i = W^[3]_i × ∂L/∂ŷ',
+  formula: String.raw`$$\frac{\partial L}{\partial W^{[3]}_i} = a^{[2]}_i \cdot \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial b^{[3]}} = \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial a^{[2]}_i} = W^{[3]}_i \cdot \frac{\partial L}{\partial \hat{y}}`,
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 2 activations (a^[2]_i)</div>
     <div class="ref-value">a^[2]_1 = ${fc(s.A2[0])}\na^[2]_2 = ${fc(s.A2[1])}\na^[2]_3 = ${fc(s.A2[2])}</div>
@@ -1493,7 +1499,7 @@ Our companion Python code uses this batch form.`,
 // ── Backprop ReLU 2 + Dense 2 ──
 {
   phase: 'backward', title: 'Backprop: Through ReLU 2 & Dense Layer 2',
-  formula: 'ReLU:        ∂L/∂z^[2]_j = ∂L/∂a^[2]_j × (1 if z^[2]_j > 0, else 0)\nDense weight: ∂L/∂W^[2]_ij = a^[1]_i × ∂L/∂z^[2]_j\nDense bias:   ∂L/∂b^[2]_j = ∂L/∂z^[2]_j\nDense input:  ∂L/∂a^[1]_i = Σ_j W^[2]_ij × ∂L/∂z^[2]_j',
+  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[2]}_j} = \tfrac{\partial L}{\partial a^{[2]}_j} \cdot \mathbb{1}\!\left[z^{[2]}_j > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[2]}_{ij}} = a^{[1]}_i \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[2]}_j} = \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Input:}\quad & \tfrac{\partial L}{\partial a^{[1]}_i} = \textstyle\sum_j W^{[2]}_{ij} \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \end{aligned}`,
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 2 pre-activations (z^[2])</div>
     <div class="ref-value">z^[2]_1 = ${fc(s.Z2[0])}\nz^[2]_2 = ${fc(s.Z2[1])}\nz^[2]_3 = ${fc(s.Z2[2])}</div>
@@ -1585,7 +1591,7 @@ Our companion Python code uses this batch form.`,
 // ── Backprop ReLU 1 + Dense 1 ──
 {
   phase: 'backward', title: 'Backprop: Through ReLU 1 & Dense Layer 1',
-  formula: 'ReLU:        ∂L/∂z^[1]_i = ∂L/∂a^[1]_i × (1 if z^[1]_i > 0, else 0)\nDense weight: ∂L/∂W^[1]_i = x × ∂L/∂z^[1]_i\nDense bias:   ∂L/∂b^[1]_i = ∂L/∂z^[1]_i',
+  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[1]}_i} = \tfrac{\partial L}{\partial a^{[1]}_i} \cdot \mathbb{1}\!\left[z^{[1]}_i > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[1]}_i} = x \cdot \tfrac{\partial L}{\partial z^{[1]}_i} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[1]}_i} = \tfrac{\partial L}{\partial z^{[1]}_i} \end{aligned}`,
   ref: `<div class="ref-section">
     <div class="ref-label">Layer 1 pre-activations (z^[1])</div>
     <div class="ref-value">z^[1]_1 = ${fc(s.Z1[0])}\nz^[1]_2 = ${fc(s.Z1[1])}\nz^[1]_3 = ${fc(s.Z1[2])}</div>
@@ -1655,7 +1661,7 @@ Our companion Python code uses this batch form.`,
 // ── 12: Weight Update ──
 {
   phase: 'update', title: 'Weight & Bias Update',
-  formula: 'W_new = W_old - lr × ∂L/∂W       b_new = b_old - lr × ∂L/∂b       (learning rate = ' + LR + ')',
+  formula: String.raw`$$W_{\text{new}} = W_{\text{old}} - \eta \cdot \frac{\partial L}{\partial W} \qquad b_{\text{new}} = b_{\text{old}} - \eta \cdot \frac{\partial L}{\partial b} \qquad (\eta = ` + LR + String.raw`)`,
   calc: (() => {
     let t = `<div class="var-defs">Variable definitions:\n`;
     t += `  W_old / b_old = current weight/bias values (BEFORE update)\n`;
@@ -1952,7 +1958,19 @@ function renderStep() {
   const fc = getEl('formula-card');
   fc.className = 'card card-formula ' + step.phase;
   getEl('formula-box').className = 'formula-box ' + step.phase;
-  getEl('formula-box').textContent = step.formula;
+  // Render the formula. If it starts with the LaTeX marker $$ we use KaTeX,
+  // otherwise we fall back to plain text (for non-math intro lines).
+  const fbox = getEl('formula-box');
+  if (typeof step.formula === 'string' && step.formula.startsWith('$$')) {
+    const latex = step.formula.slice(2);   // strip the $$ prefix marker
+    try {
+      katex.render(latex, fbox, { displayMode: true, throwOnError: false });
+    } catch (e) {
+      fbox.textContent = latex;
+    }
+  } else {
+    fbox.textContent = step.formula;
+  }
   getEl('calc-block').innerHTML = step.calc;
 
   // explain card
