@@ -237,6 +237,31 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   overflow: hidden;
 }
 #network-svg { width: 100%; height: auto; display: block; }
+/* Tab toggle that swaps the SVG between backward gradient view and forward values view (backprop steps only) */
+.network-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid #e5e7eb;
+  margin: 4px 4px 8px;
+}
+.network-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 8px 14px;
+  margin-bottom: -2px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--gray);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color .15s, border-color .15s, background .15s;
+  border-radius: 6px 6px 0 0;
+}
+.network-tab:hover { background: rgba(0, 0, 0, .03); color: var(--gray-dark); }
+.network-tab.active { background: var(--card-bg); }
+.network-tab[data-view="backward"].active { color: var(--orange); border-bottom-color: var(--orange); }
+.network-tab[data-view="forward"].active { color: var(--blue); border-bottom-color: var(--blue); }
 
 .edge { stroke: #d1d5db; stroke-width: 1.5; fill: none; transition: all .3s; }
 .edge.active-fwd { stroke: var(--blue); stroke-width: 2.5; }
@@ -531,6 +556,10 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   </div>
 
   <div class="network-wrap" id="network-wrap">
+    <div class="network-tabs" id="network-tabs" style="display:none;">
+      <button type="button" class="network-tab active" data-view="backward" onclick="setNetworkView('backward')">📤 Backward · Gradient flow</button>
+      <button type="button" class="network-tab" data-view="forward" onclick="setNetworkView('forward')">📥 Forward · Values used</button>
+    </div>
     <svg id="network-svg" viewBox="0 0 1200 520" style="touch-action: none;"></svg>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;font-size:.72rem;color:var(--gray);">
       <span>💡 <strong>Tip:</strong> Click and drag any neuron to reposition it (helps if labels overlap)</span>
@@ -2197,8 +2226,111 @@ function renderStep() {
   getEl('btn-prev').disabled = currentStep === 0;
   getEl('btn-next').disabled = currentStep === steps.length - 1;
 
-  // render SVG
-  step.render(state);
+  // ── Network tabs: show on backprop steps so the user can toggle
+  //    between the gradient-flow diagram and a cumulative forward-values
+  //    diagram showing every forward value backprop has touched so far. ──
+  const tabsEl = getEl('network-tabs');
+  if (tabsEl) {
+    if (BACKPROP_STEP_INDICES.has(currentStep)) {
+      tabsEl.style.display = '';
+      // Always reset to "backward" view when the user moves to a new step
+      currentNetworkView = 'backward';
+      tabsEl.querySelectorAll('.network-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === currentNetworkView);
+      });
+    } else {
+      tabsEl.style.display = 'none';
+      currentNetworkView = 'backward'; // not really used outside backprop
+    }
+  }
+
+  // render SVG (backward by default; forward view available via tabs on backprop steps)
+  if (currentNetworkView === 'forward' && BACKPROP_STEP_INDICES.has(currentStep)) {
+    renderForwardCumulative(state, currentStep);
+  } else {
+    step.render(state);
+  }
+}
+
+// Backprop step indices (0-based array index). These are the steps where the
+// forward/backward tab toggle is exposed.
+const BACKPROP_STEP_INDICES = new Set([12, 13, 14, 15]);
+
+// Current view mode for the main network SVG on backprop steps. One of
+// 'backward' (default — gradient flow) or 'forward' (cumulative forward
+// values consumed by backprop steps up to and including the current one).
+let currentNetworkView = 'backward';
+
+function setNetworkView(mode) {
+  if (mode !== 'forward' && mode !== 'backward') return;
+  if (!BACKPROP_STEP_INDICES.has(currentStep)) return;
+  currentNetworkView = mode;
+  // Update tab active state
+  const tabsEl = getEl('network-tabs');
+  if (tabsEl) {
+    tabsEl.querySelectorAll('.network-tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.view === mode);
+    });
+  }
+  // Re-paint the SVG without rebuilding the rest of the page
+  if (mode === 'forward') {
+    renderForwardCumulative(state, currentStep);
+  } else {
+    steps[currentStep].render(state);
+  }
+}
+
+// Paint the SVG with the *cumulative* set of forward-pass values that
+// backprop has consumed from the loss-gradient step (12) up to the current
+// step. Each successive backprop step adds another layer of forward-pass
+// state to highlight, so the diagram grows as you walk backward.
+function renderForwardCumulative(s, stepIdx) {
+  dimAll();
+
+  // All backprop steps: prediction + loss are in play
+  if (stepIdx >= 12) {
+    activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+    showBias(3, 0, 'b^[3]='+fw(b3));
+    getEl('e-loss').className.baseVal = 'edge flow-fwd';
+    getEl('c-loss').setAttribute('stroke', 'var(--red)');
+    getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+    getEl('lbl-loss').textContent = 'L';
+    getEl('val-loss').textContent = f4(s.lossMSE);
+  }
+
+  // Step 14 (Output Layer) and later: Hidden 2 activations + W^[3] are used
+  if (stepIdx >= 13) {
+    for (let i = 0; i < 3; i++) {
+      const cls = s.A2[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+      activateNode(2, i, cls, 'a^[2]_'+(i+1), fc(s.A2[i]));
+      activateEdge(2, i, 0, 'flow-fwd');
+      showWeight(2, i, 0, 'W^[3]_'+(i+1)+'='+fw(W3[i]));
+    }
+  }
+
+  // Step 15 (Through ReLU 2 & Dense 2) and later:
+  // Hidden 1 activations + all 9 W^[2] weights + Layer 2 biases come into play
+  if (stepIdx >= 14) {
+    for (let i = 0; i < 3; i++) {
+      const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+      activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+      for (let j = 0; j < 3; j++) {
+        activateEdge(1, i, j, 'flow-fwd');
+        showWeight(1, i, j, 'W^[2]_{'+(i+1)+','+(j+1)+'}='+fw(W2[i][j]));
+      }
+    }
+    for (let j = 0; j < 3; j++) showBias(2, j, 'b^[2]_'+(j+1)+'='+fw(b2[j]));
+  }
+
+  // Step 16 (Through ReLU 1 & Dense 1): input x + W^[1] weights + Layer 1 biases
+  if (stepIdx >= 15) {
+    activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+    for (let i = 0; i < 3; i++) {
+      activateEdge(0, 0, i, 'flow-fwd');
+      showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(W1[i]));
+      showBias(1, i, 'b^[1]_'+(i+1)+'='+fw(b1[i]));
+    }
+  }
 }
 
 function goStep(dir) {
