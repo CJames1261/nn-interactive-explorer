@@ -322,6 +322,9 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
     <label>Ad Spend:</label>
     <input type="range" id="x-slider" min="-1" max="1" step="0.01" value="0.22">
     <span class="val" id="x-val">$61k</span>
+    <span style="margin-left:6px;font-size:.72rem;color:var(--gray-dark);background:#eff6ff;padding:2px 8px;border-radius:6px;font-family:'Consolas',monospace;">
+      → standardized x = <span id="x-std-val" style="font-weight:700;color:var(--blue-dark);">0.22</span>
+    </span>
     <span style="margin-left:8px;font-size:.8rem;color:var(--gray)">
       Actual Revenue = <span id="y-true-val">$99k</span>
     </span>
@@ -1284,24 +1287,41 @@ function getSteps(s) {
 <div class="key-insight"><strong>🏔️ Mountain analogy -- the full loop:</strong> We just completed one full cycle: predicted (walked forward) &rarr; measured the error (checked altitude) &rarr; felt the slope for every weight (backpropagation) &rarr; took one step downhill (weight update). In real training, we repeat this <strong>thousands of times</strong>, each time inching closer to the valley. The fog means we might settle in a <em>local</em> minimum (a shallow valley) instead of the global minimum (the deepest one) -- but in practice, that's usually good enough. The regression notebook uses <strong>Adam</strong>, a smarter optimizer that adapts each weight's step size automatically, for 10,000 of these cycles.</div>`,
   render(s) {
     dimAll();
-    LAYERS.forEach((L, li) => L.nodes.forEach((n, ni) => {
-      activateNode(li, ni, 'active-update', '', '');
-    }));
+
+    // Compute new forward pass with the UPDATED weights to show new activations + prediction
+    const Z1n = s.W1n.map((w, i) => s.x * w + s.b1n[i]);
+    const A1n = Z1n.map(z => Math.max(0, z));
+    const Z2n = [0,1,2].map(j => A1n[0]*s.W2n[0][j] + A1n[1]*s.W2n[1][j] + A1n[2]*s.W2n[2][j] + s.b2n[j]);
+    const A2n = Z2n.map(z => Math.max(0, z));
+    const yPredNew = A2n[0]*s.W3n[0] + A2n[1]*s.W3n[1] + A2n[2]*s.W3n[2] + s.b3n;
+
+    // Activate all nodes with the update color + show new values
+    activateNode(0, 0, 'active-update', 'x', fw(s.x));
     for (let i = 0; i < 3; i++) {
-      getEl('lbl-'+nid(1,i)).textContent = 'Δw';
-      getEl('val-'+nid(1,i)).textContent = fc(s.dW1g[i]);
+      activateNode(1, i, 'active-update', 'h1.'+(i+1), fc(A1n[i]));
+      showBias(1, i, 'b='+fw(s.b1n[i]));
     }
     for (let j = 0; j < 3; j++) {
-      getEl('lbl-'+nid(2,j)).textContent = 'Δw';
-      getEl('val-'+nid(2,j)).textContent = '...';
+      activateNode(2, j, 'active-update', 'h2.'+(j+1), fc(A2n[j]));
+      showBias(2, j, 'b='+fw(s.b2n[j]));
     }
-    activateNode(0, 0, 'active-update', 'x', fw(s.x));
-    activateNode(3, 0, 'active-update', 'ŷ', fc(s.yPred));
-    for (let li = 0; li < 3; li++) {
-      const from = LAYERS[li].nodes, to = LAYERS[li+1].nodes;
-      from.forEach((_, fi) => to.forEach((_, ti) => {
-        activateEdge(li, fi, ti, 'edge active-update');
-      }));
+    activateNode(3, 0, 'active-update', 'ŷ', fc(yPredNew));
+    showBias(3, 0, 'b='+fw(s.b3n));
+
+    // Show all NEW weight values on every edge
+    for (let i = 0; i < 3; i++) {
+      showWeight(0, 0, i, fw(s.W1n[i]));
+      activateEdge(0, 0, i, 'edge active-update');
+    }
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        showWeight(1, i, j, fw(s.W2n[i][j]));
+        activateEdge(1, i, j, 'edge active-update');
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      showWeight(2, i, 0, fw(s.W3n[i]));
+      activateEdge(2, i, 0, 'edge active-update');
     }
   }
 }
@@ -1478,8 +1498,10 @@ document.addEventListener('keydown', e => {
 });
 
 getEl('x-slider').addEventListener('input', function() {
-  getEl('x-val').textContent = '$' + (parseFloat(this.value) * 50 + 50).toFixed(0) + 'k';
-  getEl('y-true-val').textContent = '$' + (Math.sin(2 * Math.PI * parseFloat(this.value)) * 50 + 50).toFixed(0) + 'k';
+  const v = parseFloat(this.value);
+  getEl('x-val').textContent = '$' + (v * 50 + 50).toFixed(0) + 'k';
+  getEl('x-std-val').textContent = v.toFixed(2);
+  getEl('y-true-val').textContent = '$' + (Math.sin(2 * Math.PI * v) * 50 + 50).toFixed(0) + 'k';
   renderStep();
 });
 
