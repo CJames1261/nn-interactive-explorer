@@ -2009,9 +2009,57 @@ function setAllEdges(cls) {
   getEl('e-loss').className.baseVal = cls;
 }
 
+// Render a label like "W^[3]_1=0.90" or "∂L/∂W^[2]_{1,1}=0.32" into an SVG
+// <text> element with proper superscript/subscript tspans, so the math
+// notation visually matches the LaTeX used elsewhere on the page. Recognized
+// markers:
+//   ^X    → superscript single char X
+//   ^[..] → superscript [..] (brackets included)
+//   ^{..} → superscript contents of {..}
+//   _Y    / _{..} → subscript (same rules)
+// Anything else is plain text. SVG <tspan> with dy is used for the offset,
+// followed by a counter-dy tspan to return to the baseline.
+function applyMathLabel(textEl, str) {
+  if (!textEl) return;
+  textEl.textContent = '';
+  if (str == null || str === '') return;
+  let i = 0;
+  while (i < str.length) {
+    const ch = str[i];
+    if (ch === '^' || ch === '_') {
+      const dyUp   = ch === '^' ? -4 :  4;
+      const dyBack = ch === '^' ?  4 : -4;
+      i++;
+      let content = '';
+      if (str[i] === '{') {
+        const close = str.indexOf('}', i);
+        content = str.slice(i + 1, close === -1 ? str.length : close);
+        i = close === -1 ? str.length : close + 1;
+      } else if (str[i] === '[') {
+        const close = str.indexOf(']', i);
+        content = str.slice(i, close === -1 ? str.length : close + 1);
+        i = close === -1 ? str.length : close + 1;
+      } else {
+        content = str[i] || '';
+        i++;
+      }
+      // Superscript / subscript glyph
+      const t = el('tspan', { dy: dyUp, 'font-size': '70%' }, content);
+      textEl.appendChild(t);
+      // Counter-shift back to baseline for following text
+      const back = el('tspan', { dy: dyBack }, '​');
+      textEl.appendChild(back);
+    } else {
+      let start = i;
+      while (i < str.length && str[i] !== '^' && str[i] !== '_') i++;
+      textEl.appendChild(document.createTextNode(str.slice(start, i)));
+    }
+  }
+}
+
 function activateNode(li, ni, cls, lbl, val) {
   getEl('c-'+nid(li,ni)).className.baseVal = 'node-circle active ' + cls;
-  getEl('lbl-'+nid(li,ni)).textContent = lbl;
+  applyMathLabel(getEl('lbl-'+nid(li,ni)), lbl);
   getEl('val-'+nid(li,ni)).textContent = val;
 }
 
@@ -2021,12 +2069,12 @@ function activateEdge(li, fi, ti, cls) {
 
 function showWeight(li, fi, ti, txt) {
   const wl = getEl('wl-'+eid(li, fi, ti));
-  wl.textContent = txt;
+  applyMathLabel(wl, txt);
   wl.className.baseVal = 'weight-label active';
 }
 
 function showBias(li, ni, txt) {
-  getEl('bias-'+nid(li, ni)).textContent = txt;
+  applyMathLabel(getEl('bias-'+nid(li, ni)), txt);
 }
 
 function setLoss(lbl, val, circleCls) {
