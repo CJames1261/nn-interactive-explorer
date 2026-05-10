@@ -1894,18 +1894,18 @@ THE END RESULT:
       ['\\(\\eta\\) (lr)',                            'learning rate (step size for each update)'],
       ['\\(\\partial L / \\partial W,\\ \\partial L / \\partial b\\)', 'gradients computed by backpropagation']
     ], `Subtract because gradient points UPHILL (away from minimum); we move in the OPPOSITE direction = downhill = lower loss.\n\nNote: this is plain SGD. The companion Python file uses Adam, which adapts each parameter's effective step size. Same idea, more sophisticated stepping.`) + `\n`;
-    t += `Learning rate: ${LR}\n\n`;
-    t += `═══ Layer 1 Weights (W^[1]) ═══\n`;
+    t += `Learning rate \\(\\eta\\) = ${LR}\n\n`;
+    t += `═══ Layer 1 Weights (\\(W^{[1]}\\)) ═══\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W1n[i];
       const ch = nw - W1[i];
-      t += `  W^[1]_${i+1}: ${fw(W1[i])} - ${LR}×${fc(s.dW1g[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(W^{[1]}_${i+1}\\): ${fw(W1[i])} − ${LR}×${fc(s.dW1g[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Layer 1 Biases (b^[1]) ═══\n`;
+    t += `\n═══ Layer 1 Biases (\\(b^{[1]}\\)) ═══\n`;
     for (let i = 0; i < 3; i++) {
       const nb = s.b1n[i];
       const ch = nb - b1[i];
-      t += `  b^[1]_${i+1}: ${fw(b1[i])} - ${LR}×${fc(s.db1g[i])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(b^{[1]}_${i+1}\\): ${fw(b1[i])} − ${LR}×${fc(s.db1g[i])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
     t += `\n═══ Layer 2 Weights (\\(W^{[2]}\\), showing column 1 only — 3 of 9 weights) ═══\n`;
     for (let i = 0; i < 3; i++) {
@@ -1913,23 +1913,23 @@ THE END RESULT:
       const ch = nw - W2[i][0];
       t += `  \\(W^{[2]}_{${i+1},1}\\): ${fw(W2[i][0])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Layer 2 Biases (b^[2]) ═══\n`;
+    t += `\n═══ Layer 2 Biases (\\(b^{[2]}\\)) ═══\n`;
     for (let j = 0; j < 3; j++) {
       const nb = s.b2n[j];
       const ch = nb - b2[j];
-      t += `  b^[2]_${j+1}: ${fw(b2[j])} → <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(b^{[2]}_${j+1}\\): ${fw(b2[j])} → <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Output Layer Weights (W^[3]) ═══\n`;
+    t += `\n═══ Output Layer Weights (\\(W^{[3]}\\)) ═══\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W3n[i];
       const ch = nw - W3[i];
-      t += `  W^[3]_${i+1}: ${fw(W3[i])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(W^{[3]}_${i+1}\\): ${fw(W3[i])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Output Layer Bias (b^[3]) ═══\n`;
+    t += `\n═══ Output Layer Bias (\\(b^{[3]}\\)) ═══\n`;
     {
       const nb = s.b3n;
       const ch = nb - b3;
-      t += `  b^[3]: ${fw(b3)} - ${LR}×${fc(s.db3g)} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(b^{[3]}\\): ${fw(b3)} − ${LR}×${fc(s.db3g)} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
     // Compute new prediction
     const Z1n = s.W1n.map((w, i) => s.x * w + s.b1n[i]);
@@ -1939,17 +1939,17 @@ THE END RESULT:
     const yPredNew = A2n[0]*s.W3n[0]+A2n[1]*s.W3n[1]+A2n[2]*s.W3n[2]+s.b3n;
     const lossNew = (s.yTrue - yPredNew) ** 2;
     t += `\n═══ Result After Update ═══\n`;
-    t += `  Old prediction: ${fc(s.yPred)}  |  Loss: ${fc(s.loss)}\n`;
-    t += `  New prediction: <span class="result">${fc(yPredNew)}</span>  |  Loss: <span class="result">${fc(lossNew)}</span>\n`;
+    t += `  Old \\(\\hat{y}\\): ${fc(s.yPred)}  |  Old \\(L\\): ${fc(s.loss)}\n`;
+    t += `  New \\(\\hat{y}\\): <span class="result">${fc(yPredNew)}</span>  |  New \\(L\\): <span class="result">${fc(lossNew)}</span>\n`;
     t += `  Improvement: ${f4(s.loss - lossNew)} (${((1 - lossNew/s.loss)*100).toFixed(1)}% reduction)\n`;
     t += `\n  Real training repeats this loop 1000+ times until the loss plateaus.`;
     return t;
   })(),
-  explain: `<p>The <strong>update rule</strong> is simple: take each weight's (or bias's) sensitivity score (gradient), scale it by a small step size (learning rate = ${LR}), and subtract it from the current value. <strong>Biases follow the exact same rule</strong> as weights — we're just walking downhill on a different parameter.</p>
-<p><strong>Why subtract?</strong> The gradient points "uphill" — the direction that <em>increases</em> the error. We want to go <em>downhill</em> (reduce error), so we move in the opposite direction. This is called <strong>gradient descent</strong>.</p>
-<p><strong>The learning rate (${LR})</strong> controls how big each step is. Too large and you <em>leap over</em> the valley and land on the other side (the loss actually gets worse!). Too small and you inch toward the bottom but it takes forever. Picking the right step size is one of the most important decisions in training.</p>
-<p>Weights with zero gradient (dead ReLU paths) don't change at all — there's no slope to follow, so there's no direction to step.</p>
-<p><strong>What you just saw is plain SGD.</strong> In practice you'll usually see <strong>Adam</strong> instead — same idea (subtract a step in the gradient direction), but Adam adapts the step size <em>per parameter</em> using historical gradient information. Adam tends to converge faster and more reliably. Our companion Python code uses Adam at lr=0.005.</p>
+  explain: `<p>The <strong>update rule</strong> is simple: take each weight's (or bias's) sensitivity score (gradient), scale it by a small step size (learning rate \\(\\eta\\) = ${LR}), and subtract it from the current value. <strong>Biases follow the exact same rule</strong> as weights — we're just walking downhill on a different parameter.</p>
+<p><strong>Why subtract?</strong> The gradient \\(\\partial L/\\partial \\theta\\) points "uphill" — the direction that <em>increases</em> the error. We want to go <em>downhill</em> (reduce error), so we move in the opposite direction. This is called <strong>gradient descent</strong>.</p>
+<p><strong>The learning rate \\(\\eta\\) (= ${LR})</strong> controls how big each step is. Too large and you <em>leap over</em> the valley and land on the other side (the loss actually gets worse!). Too small and you inch toward the bottom but it takes forever. Picking the right step size is one of the most important decisions in training.</p>
+<p>Weights with zero gradient (\\(\\partial L/\\partial W = 0\\), e.g. dead ReLU paths) don't change at all — there's no slope to follow, so there's no direction to step.</p>
+<p><strong>What you just saw is plain SGD.</strong> In practice you'll usually see <strong>Adam</strong> instead — same idea (subtract a step in the gradient direction), but Adam adapts the step size <em>per parameter</em> using historical gradient information. Adam tends to converge faster and more reliably. Our companion Python code uses Adam at \\(\\eta\\) = 0.005.</p>
 <div class="key-insight"><strong>🏔️ Mountain analogy — the full loop:</strong> We just completed one full cycle: predicted (walked forward) → measured the error (checked altitude) → felt the slope for every parameter (backpropagation) → took one step downhill (weight + bias update). In real training, we repeat this <strong>thousands of times</strong>, each time inching closer to the valley. The fog means we might settle in a <em>local</em> minimum (a shallow valley) instead of the global minimum (the deepest one) — but in practice, that's usually good enough. The regression notebook uses <strong>Adam</strong>, a smarter optimizer that adapts each weight's step size automatically, for thousands of these cycles.</div>`,
   render(s) {
     dimAll();
@@ -1961,32 +1961,32 @@ THE END RESULT:
     const A2n = Z2n.map(z => Math.max(0, z));
     const yPredNew = A2n[0]*s.W3n[0] + A2n[1]*s.W3n[1] + A2n[2]*s.W3n[2] + s.b3n;
 
-    // Activate all nodes with the update color + show new values
+    // Activate all nodes with the update color + show new values + properly-typeset labels
     activateNode(0, 0, 'active-update', 'x', fw(s.x));
     for (let i = 0; i < 3; i++) {
-      activateNode(1, i, 'active-update', 'h1.'+(i+1), fc(A1n[i]));
-      showBias(1, i, 'b='+fw(s.b1n[i]));
+      activateNode(1, i, 'active-update', 'a^[1]_'+(i+1), fc(A1n[i]));
+      showBias(1, i, 'b^[1]_'+(i+1)+'='+fw(s.b1n[i]));
     }
     for (let j = 0; j < 3; j++) {
-      activateNode(2, j, 'active-update', 'h2.'+(j+1), fc(A2n[j]));
-      showBias(2, j, 'b='+fw(s.b2n[j]));
+      activateNode(2, j, 'active-update', 'a^[2]_'+(j+1), fc(A2n[j]));
+      showBias(2, j, 'b^[2]_'+(j+1)+'='+fw(s.b2n[j]));
     }
     activateNode(3, 0, 'active-update', 'ŷ', fc(yPredNew));
-    showBias(3, 0, 'b='+fw(s.b3n));
+    showBias(3, 0, 'b^[3]='+fw(s.b3n));
 
-    // Show all NEW weight values on every edge
+    // Show all NEW weight values on every edge (with parameter name)
     for (let i = 0; i < 3; i++) {
-      showWeight(0, 0, i, fw(s.W1n[i]));
+      showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(s.W1n[i]));
       activateEdge(0, 0, i, 'edge active-update');
     }
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
-        showWeight(1, i, j, fw(s.W2n[i][j]));
+        showWeight(1, i, j, 'W^[2]_{'+(i+1)+','+(j+1)+'}='+fw(s.W2n[i][j]));
         activateEdge(1, i, j, 'edge active-update');
       }
     }
     for (let i = 0; i < 3; i++) {
-      showWeight(2, i, 0, fw(s.W3n[i]));
+      showWeight(2, i, 0, 'W^[3]_'+(i+1)+'='+fw(s.W3n[i]));
       activateEdge(2, i, 0, 'edge active-update');
     }
   }
