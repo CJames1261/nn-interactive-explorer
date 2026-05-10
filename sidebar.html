@@ -1259,35 +1259,46 @@ THE SOLUTION — BACKPROPAGATION:
   ────     ──────     ────────     ────────     ────
   Step 1   Step 2     Step 3       Step 4
 
-THE TOOL — DERIVATIVES:
+THE TOOL — PARTIAL DERIVATIVES:
   Notation: ∂L/∂w means "partial derivative of L with
   respect to w" — the slope of L when only w changes.
   We pronounce ∂ as "partial dee" or "del".
 
-  A derivative answers a simple question:
-    "If I tweak X by a tiny amount,
-     how much does Y change?"
+  Why "partial"? Because the loss L depends on MANY
+  variables at once (all 22 weights and biases). A
+  partial derivative asks: "if I nudge ONE of those
+  variables — say, w — by a tiny amount, while holding
+  all the others fixed, how much does L change?"
+
+  So we take ONE partial derivative per parameter —
+  one for every weight, one for every bias. Each one
+  measures: how does THIS specific weight/bias affect
+  the prediction error if we increase or decrease it?
 
   Concrete example: if y = x², then dy/dx = 2x.
     At x = 3, slope is 6.
     Nudge x by 0.01: y changes by ~0.06 (= 2·3·0.01).
     Bigger x → steeper slope → bigger change in y.
 
-  We use derivatives because they tell us EXACTLY how
-  sensitive the loss is to each weight — that's the
-  number we need to know how to adjust each weight.
+  We use partial derivatives because they tell us
+  EXACTLY how sensitive the loss is to each parameter
+  — that's the number we need to know how to adjust
+  each weight and each bias.
 
 THE END RESULT:
   A "sensitivity score" (gradient) for each of the
-  22 weights and biases. These numbers tell us
-  exactly how much, and in what direction, to nudge
-  each parameter to reduce the error.`,
-  explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights to blame for an error and by how much. It's the engine that makes learning possible.</p>
-<p><strong>For statisticians:</strong> Think of backpropagation as computing the <em>partial derivative of the loss with respect to each parameter</em> — but for a multi-layer model. In simple linear regression you have one β per predictor; here we have 22 weights spread across multiple layers, and we need a "marginal effect" for each one.</p>
-<p><strong>For data analysts:</strong> Think of it as a structured <em>sensitivity analysis</em>. We ask of every single weight: "If I changed you by a tiny amount, how much would the prediction error change?" The answer is that weight's gradient — its responsibility score for the current error.</p>
-<p><strong>Why derivatives?</strong> A derivative IS sensitivity. It's literally the answer to "how much does Y change when X changes by a little?" Since we want to <em>reduce</em> the loss, we need to know how each weight pushes the loss up or down — and that's exactly what a derivative gives us.</p>
+  22 weights and biases — 22 partial derivatives total.
+  Each tells us:
+    - sign  → which direction (increase or decrease)
+    - size  → how much (the magnitude of the nudge)
+  to reduce the error.`,
+  explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights and biases to blame for an error — and by how much. It's the engine that makes learning possible.</p>
+<p><strong>Why partial derivatives?</strong> We're computing one partial derivative <em>per parameter</em> (per weight and per bias) so we can measure how <strong>that specific parameter</strong> affects the prediction error if we increase or decrease it by a tiny amount. The "partial" part just means: the loss depends on MANY variables at once (all 22 in our network), so when we take the derivative with respect to ONE of them, we treat the other 21 as fixed.</p>
+<p><strong>Per-parameter, not per-node.</strong> A single neuron usually has MULTIPLE parameters — one bias, plus one weight for each incoming connection. Each parameter gets its own partial derivative. For example, a Hidden Layer 2 neuron has 3 incoming weights + 1 bias = 4 partial derivatives associated with it.</p>
+<p><strong>For statisticians:</strong> Think of backpropagation as computing the <em>partial derivative of the loss with respect to each parameter</em> — but for a multi-layer model. In simple linear regression you have one β per predictor; here we have 22 parameters spread across multiple layers, and we need a "marginal effect" for each one.</p>
+<p><strong>For data analysts:</strong> Think of it as a structured <em>sensitivity analysis</em>. We ask of every single weight and bias: "If I changed you by a tiny amount, how much would the prediction error change?" The answer is that parameter's gradient — its responsibility score for the current error.</p>
 <p><strong>Why "back"-propagation?</strong> The error originates at the OUTPUT (where the prediction was wrong). To assign blame to weights deeper in the network, we have to trace the influence backwards — using the chain rule: if weight W affects neuron N, and neuron N affects the loss, then W's effect on loss = (W→N) × (N→loss). Multiply sensitivities along the chain.</p>
-<div class="key-insight"><strong>End result of the next 4 steps:</strong> A complete set of <strong>22 gradients</strong> — one per weight and bias. Each gradient tells us: (1) which direction to nudge that parameter (sign), and (2) how strongly (magnitude). The final "Update Weights" step uses these gradients to actually change the weights and improve the network.</div>`,
+<div class="key-insight"><strong>End result of the next 4 steps:</strong> A complete set of <strong>22 partial derivatives</strong> — one per weight and one per bias. Each gradient tells us: (1) which direction to nudge that parameter (sign — should we increase or decrease it?), and (2) how strongly (magnitude — by how much?). The final "Update Weights" step uses these gradients to actually change the parameters and improve the network.</div>`,
   render(s) {
     dimAll();
     activateNode(3, 0, 'active-loss', 'L', f4(s.loss));
