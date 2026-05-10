@@ -1022,7 +1022,7 @@ function getSteps(s) {
     t += `  \\([1]\\)       = layer index — Layer 1 (the first hidden layer)\n`;
     t += `  Note: in vector form this is \\(z^{[1]} = x \\cdot W^{[1]} + b^{[1]}\\)</div>\n`;
     for (let i = 0; i < 3; i++) {
-      t += `Neuron ${i+1}:  z^[1]_${i+1} =  x   ×  W^[1]_${i+1}  +  b^[1]_${i+1}\n`;
+      t += `Neuron ${i+1}:  \\(z^{[1]}_${i+1} = x \\cdot W^{[1]}_${i+1} + b^{[1]}_${i+1}\\)\n`;
       t += `             = ${fw(s.x)} × ${fw(W1[i])} + ${fw(b1[i])}\n`;
       t += `             = ${fc(s.x * W1[i])} + ${fw(b1[i])}\n`;
       t += `             = <span class="result">${fc(s.Z1[i])}</span>\n\n`;
@@ -1066,7 +1066,7 @@ function getSteps(s) {
       const alive = s.Z1[i] > 0;
       const cls = alive ? 'alive' : 'dead';
       const tag = alive ? '✓ passes through' : '✗ BLOCKED (set to 0)';
-      t += `<span class="${cls}">Neuron ${i+1}:  a^[1]_${i+1} = max(0, ${fc(s.Z1[i])}) = ${fc(s.A1[i])}  ${tag}</span>\n`;
+      t += `<span class="${cls}">Neuron ${i+1}:  \\(a^{[1]}_${i+1} = \\max(0,\\,${fc(s.Z1[i])})\\) = ${fc(s.A1[i])}  ${tag}</span>\n`;
     }
     return t;
   })(),
@@ -1105,13 +1105,13 @@ function getSteps(s) {
     t += `  weights start RANDOM (small numbers near 0) and biases\n`;
     t += `  usually start at 0. Both are then UPDATED every iteration\n`;
     t += `  by gradient descent (see the final "Weight Update" step).\n\n`;
-    t += `Layer 2 weights (W^[2] matrix)     Layer 2 biases (b^[2])\n`;
-    t += `  W^[2][0] = [${fw(W2[0][0])}, ${fw(W2[0][1])}, ${fw(W2[0][2])}]    b^[2]_1 = ${fw(b2[0])}\n`;
-    t += `  W^[2][1] = [${fw(W2[1][0])},  ${fw(W2[1][1])}, ${fw(W2[1][2])}]    b^[2]_2 = ${fw(b2[1])}\n`;
-    t += `  W^[2][2] = [${fw(W2[2][0])}, ${fw(W2[2][1])},  ${fw(W2[2][2])}]    b^[2]_3 = ${fw(b2[2])}\n\n`;
+    t += `Layer 2 weights (\\(W^{[2]}\\) matrix)     Layer 2 biases (\\(b^{[2]}\\))\n`;
+    t += `  \\(W^{[2]}_{0,\\cdot}\\) = [${fw(W2[0][0])}, ${fw(W2[0][1])}, ${fw(W2[0][2])}]    \\(b^{[2]}_1\\) = ${fw(b2[0])}\n`;
+    t += `  \\(W^{[2]}_{1,\\cdot}\\) = [${fw(W2[1][0])},  ${fw(W2[1][1])}, ${fw(W2[1][2])}]    \\(b^{[2]}_2\\) = ${fw(b2[1])}\n`;
+    t += `  \\(W^{[2]}_{2,\\cdot}\\) = [${fw(W2[2][0])}, ${fw(W2[2][1])},  ${fw(W2[2][2])}]    \\(b^{[2]}_3\\) = ${fw(b2[2])}\n\n`;
     t += `─── Calculations ───\n\n`;
     for (let j = 0; j < 3; j++) {
-      t += `Neuron ${j+1}:  z^[2]_${j+1} = `;
+      t += `Neuron ${j+1}:  \\(z^{[2]}_${j+1}\\) = `;
       const terms = [];
       for (let i = 0; i < 3; i++) {
         terms.push(`${fc(s.A1[i])}×${fw(W2[i][j])}`);
@@ -1160,7 +1160,7 @@ function getSteps(s) {
       const alive = s.Z2[j] > 0;
       const cls = alive ? 'alive' : 'dead';
       const tag = alive ? '✓ passes' : '✗ BLOCKED';
-      t += `<span class="${cls}">Neuron ${j+1}:  a^[2]_${j+1} = max(0, ${fc(s.Z2[j])}) = ${fc(s.A2[j])}  ${tag}</span>\n`;
+      t += `<span class="${cls}">Neuron ${j+1}:  \\(a^{[2]}_${j+1} = \\max(0,\\,${fc(s.Z2[j])})\\) = ${fc(s.A2[j])}  ${tag}</span>\n`;
     }
     t += `\nActivation output: [${s.A2.map(a=>fc(a)).join(', ')}]`;
     t += `\nThese values feed into the output layer.`;
@@ -1196,17 +1196,17 @@ function getSteps(s) {
     t += `  \\(f()\\)       = activation function — here it's LINEAR (identity)\n`;
     t += `  \\(\\hat{y}\\)        = the network's final prediction (standardized)</div>\n`;
     t += `Output layer parameters (hardcoded for the demo):\n`;
-    t += `  W^[3] = [${fw(W3[0])}, ${fw(W3[1])}, ${fw(W3[2])}]   b^[3] = ${fw(b3)}\n\n`;
+    t += `  \\(W^{[3]}\\) = [${fw(W3[0])}, ${fw(W3[1])}, ${fw(W3[2])}]   \\(b^{[3]}\\) = ${fw(b3)}\n\n`;
     t += `─── Calculation ───\n\n`;
     const terms = [];
     for (let i = 0; i < 3; i++) terms.push(`${fc(s.A2[i])}×${fw(W3[i])}`);
     t += `Step 1 — Weighted sum:\n`;
-    t += `  z^[3] = ${terms.join(' + ')} + ${fw(b3)}\n`;
+    t += `  \\(z^{[3]}\\) = ${terms.join(' + ')} + ${fw(b3)}\n`;
     const vals = s.A2.map((a,i) => fc(a * W3[i]));
     t += `        = ${vals.join(' + ')} + ${fw(b3)}\n`;
     t += `        = <span class="result">${fc(s.Z3)}</span>\n\n`;
     t += `Step 2 — Linear activation (just passes through):\n`;
-    t += `  ŷ = f(z^[3]) = z^[3] = <span class="result">${fc(s.yPred)}</span>\n`;
+    t += `  \\(\\hat{y} = f(z^{[3]}) = z^{[3]}\\) = <span class="result">${fc(s.yPred)}</span>\n`;
     return t;
   })(),
   explain: `<p>The single output neuron computes another weighted sum, then applies a <strong>Linear activation</strong> — just the identity function f(z) = z. The activation doesn't change the value; it's there for symmetry with hidden layers.</p>
@@ -1243,12 +1243,12 @@ function getSteps(s) {
            the loss is averaged over a batch of (e.g.) 32 samples.</div>
 ─── Calculation (one sample) ───
 
-L_sample = (y_true - ŷ)²
+\\(L_{\\text{sample}} = (y_{\\text{true}} - \\hat{y})^2\\)
          = (${f4(s.yTrue)} - ${fc(s.yPred)})²
          = (${f4(s.yTrue - s.yPred)})²
          = <span class="result">${f4(s.loss)}</span>
 
-For a batch of N samples: L = (1/N) × Σ_n L_sample_n`,
+For a batch of N samples: \\(L = \\frac{1}{N} \\sum_n L_{\\text{sample},n}\\)`,
   explain: `<p><strong>Mean Squared Error</strong> measures how far off our prediction is from the true value. If you've done any statistics or regression, this is the same squared-residual you know from OLS -- just applied one sample at a time.</p>
 <p>Why square it?</p>
 <p>1. All errors become positive (whether we overestimate or underestimate)<br>
@@ -1403,7 +1403,7 @@ THE END RESULT:
   </div>
   <div class="ref-section">
     <div class="ref-label">Where used</div>
-    <div class="ref-value">∂L/∂ŷ = -2(y_true - ŷ)</div>
+    <div class="ref-value">\(\partial L / \partial \hat{y} = -2(y_{\text{true}} - \hat{y})\)</div>
   </div>`,
   calc: `<div class="var-defs">Variable definitions:
   \\(\\partial L / \\partial \\hat{y}\\)  = "sensitivity score" — how loss changes when ŷ changes
@@ -1418,7 +1418,7 @@ THE END RESULT:
   inner derivative — ŷ is being SUBTRACTED in (y_true - ŷ).</div>
 ─── Calculation (one sample) ───
 
-∂L_sample/∂ŷ = -2 × (y_true - ŷ)
+\\(\\partial L_{\\text{sample}} / \\partial \\hat{y} = -2 \\cdot (y_{\\text{true}} - \\hat{y})\\)
              = -2 × (${f4(s.yTrue)} - ${fc(s.yPred)})
              = -2 × (${f4(s.yTrue - s.yPred)})
              = <span class="result">${fc(s.dLdy)}</span>
@@ -1426,8 +1426,8 @@ THE END RESULT:
 ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!'}
 
 Batch note: with N samples and J outputs, the gradient is
-  ∂L/∂ŷ = -2(y_true - ŷ) / (N × J)
-The /(N × J) keeps gradient magnitude independent of batch size.
+  \\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y}) / (N \\cdot J)\\)
+The \\(/(N \\cdot J)\\) keeps gradient magnitude independent of batch size.
 Our companion Python code uses this batch form.`,
   explain: `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. The symbol <strong>∂</strong> means "partial derivative" — the slope of L with respect to ŷ, holding everything else fixed. Think of it like a <em>marginal effect</em> in statistics — the rate of change.</p>
 <p>Here, ∂L/∂ŷ = <strong>${fc(s.dLdy)}</strong>. For a <em>tiny</em> nudge to ŷ, the loss changes proportionally to ${fc(Math.abs(s.dLdy))}. (Larger jumps overshoot because the loss is curved, not straight.) ${s.dLdy > 0 ? 'The gradient is <strong>positive</strong>, so increasing ŷ would make things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'The gradient is <strong>negative</strong>, so increasing ŷ would actually reduce the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero — our prediction is perfect!'}</p>
