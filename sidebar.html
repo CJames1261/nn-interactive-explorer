@@ -486,8 +486,8 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .card-formula.update .calc-block .var-defs { background: #f5f3ff; color: #5b21b6; }
 .card-formula.summary .calc-block .var-defs { background: #eef2ff; color: #3730a3; }
 
-/* === STEP COMPASS (what / why / next callout at top of backprop steps) === */
-.calc-block .step-compass {
+/* === STEP COMPASS (what / why / next callout) === */
+.step-compass {
   display: block;
   background: #fef3c7;
   border-left: 4px solid #f59e0b;
@@ -500,7 +500,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   color: #78350f;
   white-space: normal;
 }
-.calc-block .step-compass .compass-title {
+.step-compass .compass-title {
   font-weight: 700;
   font-size: .75rem;
   color: #92400e;
@@ -508,19 +508,19 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   text-transform: uppercase;
   letter-spacing: .05em;
 }
-.calc-block .step-compass .compass-grid {
+.step-compass .compass-grid {
   display: grid;
   grid-template-columns: max-content 1fr;
   column-gap: 10px;
   row-gap: 6px;
   align-items: baseline;
 }
-.calc-block .step-compass .compass-label {
+.step-compass .compass-label {
   font-weight: 700;
   white-space: nowrap;
   color: #92400e;
 }
-.calc-block .step-compass .compass-text {
+.step-compass .compass-text {
   color: #78350f;
 }
 
@@ -1685,11 +1685,7 @@ THE END RESULT:
     <div class="ref-label">Where used</div>
     <div class="ref-value">\\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y})\\)</div>
   </div>`,
-  calc: compass(
-    'Compute ONE number — \\(\\partial L/\\partial \\hat{y}\\) — telling us how the loss changes if we nudge the prediction \\(\\hat{y}\\) up or down.',
-    'This is the <strong>seed of backpropagation</strong>. Every gradient for every weight and bias in the network is built by multiplying this single number through chain-rule steps. Without it, we can\'t start blaming any parameter.',
-    'This value flows into <strong>Step 14 (Output Layer Backprop)</strong>, where it combines with the Layer 2 activations and output weights to produce 4 more gradients (3 weight + 1 bias).'
-  ) + vd('Variable definitions:', [
+  calc: vd('Variable definitions:', [
     ['\\(\\partial L / \\partial \\hat{y}\\)', '"sensitivity score" — how loss changes when ŷ changes'],
     ['\\(y_{\\text{true}}\\)', 'the target value (from data)'],
     ['\\(\\hat{y}\\)',         'the network\'s prediction']
@@ -1701,7 +1697,11 @@ THE END RESULT:
 + `             = <span class="result">${fc(s.dLdy)}</span>\n\n`
 + (s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!')
 + `\n\nBatch note: with N samples and J outputs, the gradient is\n  \\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y}) / (N \\cdot J)\\)\nThe \\(/(N \\cdot J)\\) keeps gradient magnitude independent of batch size.\nOur companion Python code uses this batch form.`,
-  explain: `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. The symbol <strong>∂</strong> means "partial derivative" — the slope of L with respect to ŷ, holding everything else fixed. Think of it like a <em>marginal effect</em> in statistics — the rate of change.</p>
+  explain: compass(
+    'Compute ONE number — \\(\\partial L/\\partial \\hat{y}\\) — telling us how the loss changes if we nudge the prediction \\(\\hat{y}\\) up or down.',
+    'This is the <strong>seed of backpropagation</strong>. Every gradient for every weight and bias in the network is built by multiplying this single number through chain-rule steps. Without it, we can\'t start blaming any parameter.',
+    'This value flows into <strong>Step 14 (Output Layer Backprop)</strong>, where it combines with the Layer 2 activations and output weights to produce 4 more gradients (3 weight + 1 bias).'
+  ) + `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. The symbol <strong>∂</strong> means "partial derivative" — the slope of L with respect to ŷ, holding everything else fixed. Think of it like a <em>marginal effect</em> in statistics — the rate of change.</p>
 <p>Here, ∂L/∂ŷ = <strong>${fc(s.dLdy)}</strong>. For a <em>tiny</em> nudge to ŷ, the loss changes proportionally to ${fc(Math.abs(s.dLdy))}. (Larger jumps overshoot because the loss is curved, not straight.) ${s.dLdy > 0 ? 'The gradient is <strong>positive</strong>, so increasing ŷ would make things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'The gradient is <strong>negative</strong>, so increasing ŷ would actually reduce the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero — our prediction is perfect!'}</p>
 <p><strong>Why do we care?</strong> This single number launches the entire backward pass. It's the starting signal that will flow through every layer, telling each weight: "Here's how much you personally contributed to the error, and which direction to change."</p>
 <div class="key-insight"><strong>🏔️ Mountain analogy:</strong> Remember the fog? You can't see the whole landscape, but you <em>can</em> feel the slope under your feet -- that's exactly what this derivative is. Positive slope (${fc(s.dLdy)} ${s.dLdy > 0 ? '> 0' : s.dLdy < 0 ? '< 0' : '= 0'})? ${s.dLdy > 0 ? 'You\'re going uphill -- turn around.' : s.dLdy < 0 ? 'You\'re heading downhill -- keep going.' : 'Flat ground -- you might be at the bottom!'} Backpropagation (next steps) will feel the slope for <strong>every weight simultaneously</strong> -- like having 22 altimeters, one per parameter.</div>`,
@@ -1741,12 +1741,7 @@ THE END RESULT:
     <div class="ref-value">\\(\\partial L / \\partial W^{[3]}_i = a^{[2]}_i \\cdot \\partial L / \\partial \\hat{y}\\)\n\\(\\partial L / \\partial a^{[2]}_i = W^{[3]}_i \\cdot \\partial L / \\partial \\hat{y}\\)</div>
   </div>`,
   calc: (() => {
-    let t = compass(
-      '<strong>4 terminal gradients</strong> for this layer\'s parameters (3 weight + 1 bias) — sensitivity scores for each of the 4 output-layer parameters. Plus <strong>3 "pass-back" gradients</strong> \\(\\partial L/\\partial a^{[2]}_i\\) — not used for updates, but needed to start the next layer\'s backprop.',
-      'The output weights and bias <em>directly</em> produced the wrong prediction, so each one gets its own sensitivity score telling the optimizer how to adjust it. We also have to send a "blame signal" backward to Layer 2 so it can do the same calculation.',
-      '<strong>The 4 terminal gradients → Step 17</strong> (Weight Update), where each gets plugged into \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\). <strong>The 3 pass-back gradients → Step 15</strong>, where ReLU gates them and Dense 2 backprop continues.'
-    );
-    t += vd('Variable definitions:', [
+    let t = vd('Variable definitions:', [
       ['\\(a^{[2]}_i\\)',                       'activation from Layer 2 neuron i (ReLU output)'],
       ['\\(W^{[3]}_i\\)',                       'output layer weight from \\(a^{[2]}_i\\) → output'],
       ['\\(b^{[3]}\\)',                         'output layer bias (single scalar)'],
@@ -1823,7 +1818,11 @@ THE END RESULT:
     t += `(sum over outputs). Our output is 1-D so the sum collapses to one term.`;
     return t;
   })(),
-  explain: `<p><strong>Tracing blame backward.</strong> We know the overall error. Now the question is: which weights at this layer are most responsible?</p>
+  explain: compass(
+    '<strong>4 terminal gradients</strong> for this layer\'s parameters (3 weight + 1 bias) — sensitivity scores for each of the 4 output-layer parameters. Plus <strong>3 "pass-back" gradients</strong> \\(\\partial L/\\partial a^{[2]}_i\\) — not used for updates, but needed to start the next layer\'s backprop.',
+    'The output weights and bias <em>directly</em> produced the wrong prediction, so each one gets its own sensitivity score telling the optimizer how to adjust it. We also have to send a "blame signal" backward to Layer 2 so it can do the same calculation.',
+    '<strong>The 4 terminal gradients → Step 17</strong> (Weight Update), where each gets plugged into \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\). <strong>The 3 pass-back gradients → Step 15</strong>, where ReLU gates them and Dense 2 backprop continues.'
+  ) + `<p><strong>Tracing blame backward.</strong> We know the overall error. Now the question is: which weights at this layer are most responsible?</p>
 <p><strong>∂L/∂W₃ (weight sensitivity)</strong> -- "How much does each weight contribute to the error?" This is like computing the <em>variable importance</em> for each connection. A weight connected to a highly active neuron gets a large gradient because it had a big influence on the prediction.</p>
 <p><strong>∂L/∂b₃ (bias sensitivity)</strong> -- "How much does the bias contribute?" The bias shifts the entire output, so its gradient equals the incoming signal directly.</p>
 <p><strong>∂L/∂A₂ (passed backward)</strong> -- "How much did each Layer 2 neuron contribute to the error?" These gradients get sent to the previous layer so it can do the same analysis. Think of it as <em>passing the blame upstream</em>.</p>
@@ -1864,12 +1863,7 @@ THE END RESULT:
     <div class="ref-value">ReLU gate uses <strong>\\(z^{[2]}\\)</strong> (alive if z > 0)\nWeight grad uses <strong>\\(a^{[1]}_i\\)</strong> (Layer 1 outputs)</div>
   </div>`,
   calc: (() => {
-    let t = compass(
-      '<strong>12 terminal gradients</strong> for Layer 2\'s parameters (9 weight + 3 bias) — one sensitivity score per parameter. Plus <strong>3 pass-back gradients</strong> \\(\\partial L/\\partial a^{[1]}_i\\) — the signal Layer 1 needs to continue backprop. Also: ReLU 2 gates the incoming gradients (kills them for dead neurons).',
-      'Each of Layer 2\'s 12 parameters contributed (through chain rule) to the prediction error. We need an individual "blame score" for each so Step 17 knows how to nudge it. ReLU 2 gating prevents dead neurons from sending bogus signals backward.',
-      '<strong>The 12 terminal gradients → Step 17</strong> (Weight Update) — they become per-parameter update directions. <strong>The 3 pass-back gradients → Step 16</strong>, the final backprop step for Layer 1.'
-    );
-    t += vd('Variable definitions:', [
+    let t = vd('Variable definitions:', [
       ['\\(z^{[2]}_j\\)',                          'Layer 2 pre-activation from forward pass (gates ReLU)'],
       ['\\(a^{[1]}_i\\)',                          'activation from Layer 1 (used for weight gradients)'],
       ['\\(W^{[2]}_{ij}\\)',                       'weight from Layer 1 neuron i → Layer 2 neuron j'],
@@ -1939,7 +1933,11 @@ THE END RESULT:
     }
     return t;
   })(),
-  explain: `<p><strong>ReLU backward = a yes/no gate.</strong> Remember, ReLU zeroed out negative values on the forward pass. Now it does the same to gradients: if a neuron was active (z &gt; 0), the gradient flows through. If it was dead (z &le; 0), the gradient is <strong>blocked completely</strong>.</p>
+  explain: compass(
+    '<strong>12 terminal gradients</strong> for Layer 2\'s parameters (9 weight + 3 bias) — one sensitivity score per parameter. Plus <strong>3 pass-back gradients</strong> \\(\\partial L/\\partial a^{[1]}_i\\) — the signal Layer 1 needs to continue backprop. Also: ReLU 2 gates the incoming gradients (kills them for dead neurons).',
+    'Each of Layer 2\'s 12 parameters contributed (through chain rule) to the prediction error. We need an individual "blame score" for each so Step 17 knows how to nudge it. ReLU 2 gating prevents dead neurons from sending bogus signals backward.',
+    '<strong>The 12 terminal gradients → Step 17</strong> (Weight Update) — they become per-parameter update directions. <strong>The 3 pass-back gradients → Step 16</strong>, the final backprop step for Layer 1.'
+  ) + `<p><strong>ReLU backward = a yes/no gate.</strong> Remember, ReLU zeroed out negative values on the forward pass. Now it does the same to gradients: if a neuron was active (z &gt; 0), the gradient flows through. If it was dead (z &le; 0), the gradient is <strong>blocked completely</strong>.</p>
 <p><strong>In data science terms:</strong> A blocked gradient means "changing this weight would have <em>no effect whatsoever</em> on the prediction." It's like a feature that was dropped from your model -- it contributes nothing right now, so there's nothing to optimize.</p>
 <p><strong>Dense 2 backward</strong> then computes the weight gradients (sensitivity of each weight to the error) and passes blame further back to Layer 1.</p>
 <p>Gradients reaching Layer 1: <strong>[${s.dA1.map(d=>fc(d)).join(', ')}]</strong></p>
@@ -1986,12 +1984,7 @@ THE END RESULT:
     <div class="ref-value">ReLU gate uses <strong>\\(z^{[1]}\\)</strong> (alive if z > 0)\nWeight grad uses <strong>\\(x\\)</strong> (the input)</div>
   </div>`,
   calc: (() => {
-    let t = compass(
-      '<strong>6 terminal gradients</strong> for Layer 1\'s parameters (3 weight + 3 bias) — sensitivity scores for the input layer. No pass-back gradients needed (Layer 1 is the first layer; nothing earlier to send a signal to). ReLU 1 gates the incoming gradients first.',
-      'These are the LAST 6 of the 22 gradients. After this step, every weight and bias in the network has its own sensitivity score. Backpropagation is complete.',
-      '<strong>All 6 terminal gradients → Step 17</strong> (Weight Update). After Step 17, the network has been updated by one tiny step. In real training this whole cycle (forward → loss → backward → update) repeats thousands of times until the loss plateaus.'
-    );
-    t += vd('Variable definitions:', [
+    let t = vd('Variable definitions:', [
       ['\\(z^{[1]}_i\\)',                          'Layer 1 pre-activation from forward pass (gates ReLU)'],
       ['\\(x\\)',                                  'the standardized input value (Ad Spend → x)'],
       ['\\(W^{[1]}_i\\)',                          'Layer 1 weight for neuron i'],
@@ -2037,7 +2030,11 @@ THE END RESULT:
     t += `\nBackpropagation complete! We now have gradients\nfor ALL 22 parameters in the network — and every one of them\nhas been previewed against the Step 17 update formula above.`;
     return t;
   })(),
-  explain: `<p><strong>The blame reaches the first layer.</strong> Same pattern: ReLU gates the gradient, then Dense computes how sensitive each weight is to the error.</p>
+  explain: compass(
+    '<strong>6 terminal gradients</strong> for Layer 1\'s parameters (3 weight + 3 bias) — sensitivity scores for the input layer. No pass-back gradients needed (Layer 1 is the first layer; nothing earlier to send a signal to). ReLU 1 gates the incoming gradients first.',
+    'These are the LAST 6 of the 22 gradients. After this step, every weight and bias in the network has its own sensitivity score. Backpropagation is complete.',
+    '<strong>All 6 terminal gradients → Step 17</strong> (Weight Update). After Step 17, the network has been updated by one tiny step. In real training this whole cycle (forward → loss → backward → update) repeats thousands of times until the loss plateaus.'
+  ) + `<p><strong>The blame reaches the first layer.</strong> Same pattern: ReLU gates the gradient, then Dense computes how sensitive each weight is to the error.</p>
 <p>We now have a <strong>sensitivity score (gradient) for every single weight and bias</strong> in the entire network -- all 22 of them. Each gradient answers: "If I increase this parameter by a tiny amount, how much does the error change?"</p>
 <p><strong>The big picture:</strong> Think of it like running a regression where your "coefficients" are the weight updates. Large gradient = this weight had a big impact on the error and needs a big correction. Small gradient = minor player. Zero gradient = irrelevant (dead neuron path).</p>
 <div class="key-insight"><strong>Why "chain rule"?</strong> The gradient for w1 in Layer 1 was computed by multiplying sensitivity scores through 6 operations: Loss &rarr; Linear &rarr; Dense3 &rarr; ReLU2 &rarr; Dense2 &rarr; ReLU1 &rarr; Dense1. Each link in the chain says "how sensitive am I to my input?" and we multiply them all together. In statistics, this is like computing an <strong>indirect effect</strong> through a chain of mediating variables. That's backpropagation -- just repeated multiplication of local sensitivities!</div>`,
