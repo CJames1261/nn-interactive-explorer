@@ -1643,6 +1643,15 @@ THE END RESULT:
     - size  → how much (the magnitude of the nudge)
   to reduce the error.`,
   explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights and biases to blame for an error — and by how much. It's the engine that makes learning possible.</p>
+<div class="key-insight" style="background:#eff6ff;border-left-color:#3b82f6;color:#1e3a8a;"><strong>💡 Heads up — backprop reuses every number from the forward pass.</strong> The next 4 steps don't invent any new values. They take the activations \\(a^{[1]}_i\\) and \\(a^{[2]}_j\\), pre-activations \\(z^{[1]}_i\\) and \\(z^{[2]}_j\\), weights \\(W^{[1]}, W^{[2]}, W^{[3]}\\), input \\(x\\), and prediction \\(\\hat{y}\\) — all already computed on the forward pass — and chain-rule them into per-parameter gradients.
+<br><br>
+If you ever lose track of where a number in a calculation came from, look at the top of the network diagram on any of the next 4 steps for two tabs:
+<br>
+&nbsp;&nbsp;<strong>📤 Backward · Gradient flow</strong> (default view — orange gradients flowing back through the network)
+<br>
+&nbsp;&nbsp;<strong>📥 Forward · Values used</strong> (companion view — the same diagram repaints to show every forward-pass value used by the current step)
+<br><br>
+Click the Forward tab whenever you want to trace a number back to its source — the visualization will highlight exactly which activations, weights, and biases are feeding into that step's calculations. Click Backward to return to the gradient view.</div>
 <p><strong>The loss is one giant function of 22 variables.</strong> If you mentally substitute the forward pass back into itself, our prediction \\(\\hat{y}\\) becomes a deeply nested expression involving <strong>all 22 parameters</strong>: the 15 weights and 7 biases. The loss \\(L = (y_{\\text{true}} - \\hat{y})^2\\) sits on top of that. So \\(L\\) is one function of 22 variables (with \\(x\\) and \\(y_{\\text{true}}\\) fixed as data) — and our goal during training is to find values for those 22 variables that <strong>minimize \\(L\\)</strong>. The calc block above lays the full equation out layer by layer.</p>
 <p><strong>Why partial derivatives?</strong> We're computing one partial derivative <em>per parameter</em> (per weight and per bias) so we can measure how <strong>that specific parameter</strong> affects the prediction error if we increase or decrease it by a tiny amount. The "partial" part just means: the loss depends on MANY variables at once (all 22 in our network), so when we take the derivative with respect to ONE of them, we treat the other 21 as fixed.</p>
 <p><strong>Per-parameter, not per-node.</strong> A single neuron usually has MULTIPLE parameters — one bias, plus one weight for each incoming connection. Each parameter gets its own partial derivative. For example, a Hidden Layer 2 neuron has 3 incoming weights + 1 bias = 4 partial derivatives associated with it.</p>
