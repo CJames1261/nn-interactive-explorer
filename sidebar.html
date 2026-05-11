@@ -486,6 +486,44 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .card-formula.update .calc-block .var-defs { background: #f5f3ff; color: #5b21b6; }
 .card-formula.summary .calc-block .var-defs { background: #eef2ff; color: #3730a3; }
 
+/* === STEP COMPASS (what / why / next callout at top of backprop steps) === */
+.calc-block .step-compass {
+  display: block;
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 10px 14px 12px;
+  border-radius: 6px;
+  margin: 0 0 14px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: .82rem;
+  line-height: 1.55;
+  color: #78350f;
+  white-space: normal;
+}
+.calc-block .step-compass .compass-title {
+  font-weight: 700;
+  font-size: .75rem;
+  color: #92400e;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.calc-block .step-compass .compass-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 10px;
+  row-gap: 6px;
+  align-items: baseline;
+}
+.calc-block .step-compass .compass-label {
+  font-weight: 700;
+  white-space: nowrap;
+  color: #92400e;
+}
+.calc-block .step-compass .compass-text {
+  color: #78350f;
+}
+
 .card-explain p {
   font-size: .85rem; line-height: 1.6; margin-bottom: 8px; color: #374151;
 }
@@ -1025,6 +1063,19 @@ function fw(v) { return v.toFixed(2); }
 function fc(v) { return v.toFixed(2); }
 function f4(v) { return v.toFixed(2); }
 function sign(v) { return v >= 0 ? '+' : ''; }
+
+// Helper for a "step at a glance" callout — what we're doing this step,
+// why we're doing it, where the results go next. Designed for backprop steps
+// where the chain of dependencies can otherwise be hard to follow.
+function compass(what, why, next) {
+  return `<div class="step-compass">` +
+    `<div class="compass-title">🧭 At a glance</div>` +
+    `<div class="compass-grid">` +
+      `<span class="compass-label">📍 What:</span><span class="compass-text">${what}</span>` +
+      `<span class="compass-label">🎯 Why:</span><span class="compass-text">${why}</span>` +
+      `<span class="compass-label">➡️ Next:</span><span class="compass-text">${next}</span>` +
+    `</div></div>`;
+}
 
 // Helper for variable-definition blocks with CSS-grid alignment.
 // pairs is an array of [symbolHTML, descriptionHTML] tuples.
@@ -1634,7 +1685,11 @@ THE END RESULT:
     <div class="ref-label">Where used</div>
     <div class="ref-value">\\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y})\\)</div>
   </div>`,
-  calc: vd('Variable definitions:', [
+  calc: compass(
+    'Compute ONE number — \\(\\partial L/\\partial \\hat{y}\\) — telling us how the loss changes if we nudge the prediction \\(\\hat{y}\\) up or down.',
+    'This is the <strong>seed of backpropagation</strong>. Every gradient for every weight and bias in the network is built by multiplying this single number through chain-rule steps. Without it, we can\'t start blaming any parameter.',
+    'This value flows into <strong>Step 14 (Output Layer Backprop)</strong>, where it combines with the Layer 2 activations and output weights to produce 4 more gradients (3 weight + 1 bias).'
+  ) + vd('Variable definitions:', [
     ['\\(\\partial L / \\partial \\hat{y}\\)', '"sensitivity score" — how loss changes when ŷ changes'],
     ['\\(y_{\\text{true}}\\)', 'the target value (from data)'],
     ['\\(\\hat{y}\\)',         'the network\'s prediction']
@@ -1686,12 +1741,17 @@ THE END RESULT:
     <div class="ref-value">\\(\\partial L / \\partial W^{[3]}_i = a^{[2]}_i \\cdot \\partial L / \\partial \\hat{y}\\)\n\\(\\partial L / \\partial a^{[2]}_i = W^{[3]}_i \\cdot \\partial L / \\partial \\hat{y}\\)</div>
   </div>`,
   calc: (() => {
-    let t = vd('Variable definitions:', [
+    let t = compass(
+      '<strong>4 terminal gradients</strong> for this layer\'s parameters (3 weight + 1 bias) — sensitivity scores for each of the 4 output-layer parameters. Plus <strong>3 "pass-back" gradients</strong> \\(\\partial L/\\partial a^{[2]}_i\\) — not used for updates, but needed to start the next layer\'s backprop.',
+      'The output weights and bias <em>directly</em> produced the wrong prediction, so each one gets its own sensitivity score telling the optimizer how to adjust it. We also have to send a "blame signal" backward to Layer 2 so it can do the same calculation.',
+      '<strong>The 4 terminal gradients → Step 17</strong> (Weight Update), where each gets plugged into \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\). <strong>The 3 pass-back gradients → Step 15</strong>, where ReLU gates them and Dense 2 backprop continues.'
+    );
+    t += vd('Variable definitions:', [
       ['\\(a^{[2]}_i\\)',                       'activation from Layer 2 neuron i (ReLU output)'],
       ['\\(W^{[3]}_i\\)',                       'output layer weight from \\(a^{[2]}_i\\) → output'],
       ['\\(b^{[3]}\\)',                         'output layer bias (single scalar)'],
       ['\\(\\partial L / \\partial \\hat{y}\\)', 'incoming gradient from previous step (loss gradient)'],
-      ['\\(\\partial L / \\partial W^{[3]}_i\\)', 'sensitivity of loss to weight \\(W^{[3]}_i\\) (output)'],
+      ['\\(\\partial L / \\partial W^{[3]}_i\\)', 'sensitivity of loss to weight \\(W^{[3]}_i\\) (produced this step)'],
       ['\\(\\partial L / \\partial a^{[2]}_i\\)', 'gradient passed BACK to Layer 2 (for next step)']
     ]) + `\n`;
     t += `Incoming gradient: \\(\\partial L / \\partial \\hat{y}\\) = ${fc(s.dLdy)}\n\n`;
@@ -1804,15 +1864,20 @@ THE END RESULT:
     <div class="ref-value">ReLU gate uses <strong>\\(z^{[2]}\\)</strong> (alive if z > 0)\nWeight grad uses <strong>\\(a^{[1]}_i\\)</strong> (Layer 1 outputs)</div>
   </div>`,
   calc: (() => {
-    let t = vd('Variable definitions:', [
+    let t = compass(
+      '<strong>12 terminal gradients</strong> for Layer 2\'s parameters (9 weight + 3 bias) — one sensitivity score per parameter. Plus <strong>3 pass-back gradients</strong> \\(\\partial L/\\partial a^{[1]}_i\\) — the signal Layer 1 needs to continue backprop. Also: ReLU 2 gates the incoming gradients (kills them for dead neurons).',
+      'Each of Layer 2\'s 12 parameters contributed (through chain rule) to the prediction error. We need an individual "blame score" for each so Step 17 knows how to nudge it. ReLU 2 gating prevents dead neurons from sending bogus signals backward.',
+      '<strong>The 12 terminal gradients → Step 17</strong> (Weight Update) — they become per-parameter update directions. <strong>The 3 pass-back gradients → Step 16</strong>, the final backprop step for Layer 1.'
+    );
+    t += vd('Variable definitions:', [
       ['\\(z^{[2]}_j\\)',                          'Layer 2 pre-activation from forward pass (gates ReLU)'],
       ['\\(a^{[1]}_i\\)',                          'activation from Layer 1 (used for weight gradients)'],
       ['\\(W^{[2]}_{ij}\\)',                       'weight from Layer 1 neuron i → Layer 2 neuron j'],
       ['\\(b^{[2]}_j\\)',                          'Layer 2 bias for neuron j'],
       ['\\(\\partial L / \\partial a^{[2]}_j\\)',  'incoming gradient (for Layer 2 activations)'],
       ['\\(\\partial L / \\partial z^{[2]}_j\\)',  'gradient AFTER ReLU gate (next step uses this)'],
-      ['\\(\\partial L / \\partial W^{[2]}_{ij}\\)', 'sensitivity of loss to weight \\(W^{[2]}_{ij}\\) (output)'],
-      ['\\(\\partial L / \\partial b^{[2]}_j\\)',  'sensitivity of loss to bias \\(b^{[2]}_j\\) (output)'],
+      ['\\(\\partial L / \\partial W^{[2]}_{ij}\\)', 'sensitivity of loss to weight \\(W^{[2]}_{ij}\\) (produced this step)'],
+      ['\\(\\partial L / \\partial b^{[2]}_j\\)',  'sensitivity of loss to bias \\(b^{[2]}_j\\) (produced this step)'],
       ['\\(\\partial L / \\partial a^{[1]}_i\\)',  'gradient passed BACK to Layer 1 (for next step)']
     ]) + `\n`;
     t += `ReLU 2 backward (gate gradients through):\n`;
@@ -1921,15 +1986,20 @@ THE END RESULT:
     <div class="ref-value">ReLU gate uses <strong>\\(z^{[1]}\\)</strong> (alive if z > 0)\nWeight grad uses <strong>\\(x\\)</strong> (the input)</div>
   </div>`,
   calc: (() => {
-    let t = vd('Variable definitions:', [
+    let t = compass(
+      '<strong>6 terminal gradients</strong> for Layer 1\'s parameters (3 weight + 3 bias) — sensitivity scores for the input layer. No pass-back gradients needed (Layer 1 is the first layer; nothing earlier to send a signal to). ReLU 1 gates the incoming gradients first.',
+      'These are the LAST 6 of the 22 gradients. After this step, every weight and bias in the network has its own sensitivity score. Backpropagation is complete.',
+      '<strong>All 6 terminal gradients → Step 17</strong> (Weight Update). After Step 17, the network has been updated by one tiny step. In real training this whole cycle (forward → loss → backward → update) repeats thousands of times until the loss plateaus.'
+    );
+    t += vd('Variable definitions:', [
       ['\\(z^{[1]}_i\\)',                          'Layer 1 pre-activation from forward pass (gates ReLU)'],
       ['\\(x\\)',                                  'the standardized input value (Ad Spend → x)'],
       ['\\(W^{[1]}_i\\)',                          'Layer 1 weight for neuron i'],
       ['\\(b^{[1]}_i\\)',                          'Layer 1 bias for neuron i'],
       ['\\(\\partial L / \\partial a^{[1]}_i\\)',  'incoming gradient (for Layer 1 activations)'],
       ['\\(\\partial L / \\partial z^{[1]}_i\\)',  'gradient AFTER ReLU gate'],
-      ['\\(\\partial L / \\partial W^{[1]}_i\\)',  'sensitivity of loss to weight \\(W^{[1]}_i\\) (output)'],
-      ['\\(\\partial L / \\partial b^{[1]}_i\\)',  'sensitivity of loss to bias \\(b^{[1]}_i\\) (output)']
+      ['\\(\\partial L / \\partial W^{[1]}_i\\)',  'sensitivity of loss to weight \\(W^{[1]}_i\\) (produced this step)'],
+      ['\\(\\partial L / \\partial b^{[1]}_i\\)',  'sensitivity of loss to bias \\(b^{[1]}_i\\) (produced this step)']
     ]) + `\n`;
     t += `ReLU 1 backward (gate gradients through):\n`;
     for (let i = 0; i < 3; i++) {
