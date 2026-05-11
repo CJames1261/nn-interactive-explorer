@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neural Network Regression — Interactive Explorer</title>
+<title>Neural Network Regression — Interactive Explorer (Sidebar)</title>
+<!-- KaTeX for LaTeX math rendering in formula bars + inline math in var-defs -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
 <style>
 :root {
   --blue: #3b82f6; --blue-light: #dbeafe; --blue-dark: #1d4ed8;
@@ -21,42 +25,194 @@ body {
   color: var(--text); background: var(--bg);
   min-height: 100vh; overflow-x: hidden;
 }
-.app { max-width: 1100px; margin: 0 auto; padding: 16px 20px; }
+/* === APP LAYOUT (sidebar + main) === */
+.app {
+  display: grid; grid-template-columns: 260px 1fr;
+  min-height: 100vh; max-width: 1500px; margin: 0 auto;
+  background: white;
+}
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .sidebar.open { display: block; position: fixed; top: 0; left: 0; bottom: 0; width: 280px; z-index: 100; box-shadow: 0 0 30px rgba(0,0,0,.2); }
+  .mobile-menu-btn { display: flex !important; }
+}
+.main { padding: 20px 28px; min-width: 0; }
 
-/* === HEADER === */
-header { text-align: center; margin-bottom: 12px; }
-header h1 { font-size: 1.5rem; font-weight: 700; }
-header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
+/* === SIDEBAR === */
+.sidebar {
+  background: #fafbfc; border-right: 1px solid #e5e7eb;
+  padding: 18px 0; overflow-y: auto;
+  position: sticky; top: 0; height: 100vh;
+}
+.sidebar-header {
+  padding: 0 18px 16px; border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 8px;
+}
+.sidebar-header h2 {
+  font-size: .95rem; font-weight: 700; line-height: 1.3;
+}
+.sidebar-header p {
+  font-size: .72rem; color: var(--gray); margin-top: 4px; line-height: 1.4;
+}
+.sidebar-progress {
+  margin-top: 10px; font-size: .7rem; color: var(--gray);
+}
+.sidebar-progress-bar {
+  height: 4px; background: #e5e7eb; border-radius: 2px;
+  margin-top: 4px; overflow: hidden;
+}
+.sidebar-progress-fill {
+  height: 100%; background: var(--blue); border-radius: 2px;
+  transition: width .3s;
+}
+.phase-group {
+  margin-bottom: 2px;
+}
+.phase-group-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 18px; cursor: pointer;
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--gray-dark); font-weight: 700;
+  user-select: none; transition: background .15s;
+}
+.phase-group-header:hover { background: rgba(0,0,0,.03); }
+.phase-group-header .chevron {
+  font-size: .55rem; transition: transform .2s; color: var(--gray);
+}
+.phase-group.expanded .phase-group-header .chevron {
+  transform: rotate(90deg);
+}
+.phase-group-header .phase-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.phase-group-header .phase-dot.intro { background: var(--green); }
+.phase-group-header .phase-dot.data { background: #0d9488; }
+.phase-group-header .phase-dot.forward { background: var(--blue); }
+.phase-group-header .phase-dot.loss { background: var(--red); }
+.phase-group-header .phase-dot.backward { background: var(--orange); }
+.phase-group-header .phase-dot.update { background: var(--purple); }
+.phase-group-header .phase-dot.summary { background: #6366f1; }
+.phase-group-header .phase-count {
+  margin-left: auto; font-size: .65rem;
+  color: var(--gray); font-weight: 600;
+}
+.step-list {
+  display: none;
+}
+.phase-group.expanded .step-list { display: block; }
+.step-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px 8px 18px; font-size: .82rem;
+  color: var(--text); cursor: pointer; border-left: 3px solid transparent;
+  transition: all .15s; line-height: 1.3; position: relative;
+}
+.step-item:hover {
+  background: #eef2ff;
+  transform: translateX(2px);
+}
+.step-item:hover .step-num { color: var(--blue); border-color: var(--blue); }
+.step-item .step-num {
+  flex-shrink: 0;
+  width: 22px; height: 22px;
+  border-radius: 50%; border: 1.5px solid #d1d5db;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .68rem; font-weight: 700; color: var(--gray);
+  background: white; transition: all .15s;
+}
+.step-item .marker {
+  width: 14px; flex-shrink: 0; text-align: center;
+  font-size: .72rem; font-weight: 700;
+}
+.step-item .step-name {
+  flex: 1; min-width: 0;
+}
+.step-item.completed .marker { color: var(--green); }
+.step-item.completed .marker::before { content: "✓"; }
+.step-item.completed .step-num {
+  background: var(--green); color: white; border-color: var(--green);
+}
+.step-item.upcoming { color: var(--gray); }
+.step-item.upcoming .marker { color: #d1d5db; }
+.step-item.upcoming .marker::before { content: "○"; }
+.step-item.current {
+  background: #e0e7ff; color: var(--blue-dark); font-weight: 600;
+  border-left-color: var(--blue);
+}
+.step-item.current .marker { color: var(--blue); }
+.step-item.current .marker::before { content: "▸"; }
+.step-item.current .step-num {
+  background: var(--blue); color: white; border-color: var(--blue);
+}
+.step-item.current.intro { background: var(--green-light); color: #166534; border-left-color: var(--green); }
+.step-item.current.intro .marker { color: var(--green); }
+.step-item.current.intro .step-num { background: var(--green); border-color: var(--green); }
+.step-item.current.data { background: #ccfbf1; color: #134e4a; border-left-color: #0d9488; }
+.step-item.current.data .marker { color: #0d9488; }
+.step-item.current.data .step-num { background: #0d9488; border-color: #0d9488; }
+.step-item.current.loss { background: var(--red-light); color: #991b1b; border-left-color: var(--red); }
+.step-item.current.loss .marker { color: var(--red); }
+.step-item.current.loss .step-num { background: var(--red); border-color: var(--red); }
+.step-item.current.backward { background: var(--orange-light); color: #9a3412; border-left-color: var(--orange); }
+.step-item.current.backward .marker { color: var(--orange); }
+.step-item.current.backward .step-num { background: var(--orange); border-color: var(--orange); }
+.step-item.current.update { background: var(--purple-light); color: #5b21b6; border-left-color: var(--purple); }
+.step-item.current.update .marker { color: var(--purple); }
+.step-item.current.update .step-num { background: var(--purple); border-color: var(--purple); }
 
-/* === STEP BAR === */
-.step-bar {
-  display: flex; align-items: center; justify-content: center;
-  gap: 4px; padding: 10px 0; margin-bottom: 8px; flex-wrap: wrap;
+/* Pulse animation on the NEXT step to draw the eye */
+@keyframes nextPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, .35); }
+  50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
 }
-.step-dot {
-  width: 28px; height: 28px; border-radius: 50%; border: 2px solid #d1d5db;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .65rem; font-weight: 600; cursor: pointer;
-  transition: all .2s; color: var(--gray); background: white;
+.step-item.next-up .step-num {
+  background: white; color: var(--blue); border-color: var(--blue);
+  animation: nextPulse 2s ease-in-out infinite;
 }
-.step-dot:hover { border-color: var(--blue); color: var(--blue); transform: scale(1.15); }
-.step-dot.active { color: white; transform: scale(1.2); }
-.step-dot.intro { border-color: var(--green); }
-.step-dot.intro.active { background: var(--green); border-color: #16a34a; }
-.step-dot.data { border-color: #0d9488; }
-.step-dot.data.active { background: #0d9488; border-color: #0f766e; }
-.step-dot.forward { border-color: var(--blue); }
-.step-dot.forward.active { background: var(--blue); border-color: var(--blue-dark); }
-.step-dot.loss { border-color: var(--red); }
-.step-dot.loss.active { background: var(--red); border-color: #dc2626; }
-.step-dot.backward { border-color: var(--orange); }
-.step-dot.backward.active { background: var(--orange); border-color: #ea580c; }
-.step-dot.update { border-color: var(--purple); }
-.step-dot.update.active { background: var(--purple); border-color: #7c3aed; }
-.phase-label {
-  font-size: .6rem; text-transform: uppercase; letter-spacing: .05em;
-  font-weight: 700; margin: 0 6px; color: var(--gray);
+.step-item.next-up::after {
+  content: "← next"; font-size: .65rem;
+  color: var(--blue); font-weight: 700; margin-left: auto;
+  text-transform: uppercase; letter-spacing: .03em; flex-shrink: 0;
+  opacity: 0; animation: nextHintFade 2s ease-in-out infinite;
 }
+@keyframes nextHintFade {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+/* Sidebar instruction tip */
+.sidebar-tip {
+  margin: 10px 18px 4px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border-left: 3px solid var(--blue);
+  padding: 8px 10px; border-radius: 4px;
+  font-size: .72rem; color: var(--blue-dark); line-height: 1.4;
+}
+.sidebar-tip strong { font-weight: 700; }
+
+/* Mobile menu button */
+.mobile-menu-btn {
+  display: none; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid #d1d5db; background: white;
+  border-radius: 8px; font-size: .8rem; font-weight: 600; cursor: pointer;
+  margin-bottom: 12px; color: var(--text);
+}
+.sidebar-close {
+  display: none; position: absolute; top: 8px; right: 12px;
+  border: 0; background: transparent; font-size: 1.4rem; cursor: pointer;
+  color: var(--gray);
+}
+.sidebar.open .sidebar-close { display: block; }
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  z-index: 99;
+}
+.sidebar-overlay.show { display: block; }
+
+/* === MAIN HEADER === */
+header { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb; }
+header h1 { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 
 /* === STEP TITLE === */
 .step-title {
@@ -74,6 +230,7 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
 .phase-tag.loss { background: var(--red-light); color: var(--red); }
 .phase-tag.backward { background: var(--orange-light); color: var(--orange); }
 .phase-tag.update { background: var(--purple-light); color: var(--purple); }
+.phase-tag.summary { background: #e0e7ff; color: #4338ca; }
 
 /* === NETWORK SVG === */
 .network-wrap {
@@ -82,6 +239,31 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
   overflow: hidden;
 }
 #network-svg { width: 100%; height: auto; display: block; }
+/* Tab toggle that swaps the SVG between backward gradient view and forward values view (backprop steps only) */
+.network-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid #e5e7eb;
+  margin: 4px 4px 8px;
+}
+.network-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 8px 14px;
+  margin-bottom: -2px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--gray);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color .15s, border-color .15s, background .15s;
+  border-radius: 6px 6px 0 0;
+}
+.network-tab:hover { background: rgba(0, 0, 0, .03); color: var(--gray-dark); }
+.network-tab.active { background: var(--card-bg); }
+.network-tab[data-view="backward"].active { color: var(--orange); border-bottom-color: var(--orange); }
+.network-tab[data-view="forward"].active { color: var(--blue); border-bottom-color: var(--blue); }
 
 .edge { stroke: #d1d5db; stroke-width: 1.5; fill: none; transition: all .3s; }
 .edge.active-fwd { stroke: var(--blue); stroke-width: 2.5; }
@@ -114,11 +296,11 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
   fill: var(--gray-dark); text-anchor: middle; pointer-events: none;
 }
 .weight-label {
-  font-size: 8px; font-family: "Consolas",monospace;
+  font-size: 10px; font-family: "Consolas",monospace;
   fill: var(--gray); text-anchor: middle; dominant-baseline: central;
   pointer-events: none; transition: all .3s;
 }
-.weight-label.active { fill: var(--text); font-size: 9px; font-weight: 600; }
+.weight-label.active { fill: var(--text); font-size: 11px; font-weight: 700; }
 .layer-title {
   font-size: 11px; font-weight: 700; fill: var(--gray);
   text-anchor: middle; text-transform: uppercase; letter-spacing: .04em;
@@ -183,16 +365,81 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
 .card-formula.loss { border-left-color: var(--red); }
 .card-formula.backward { border-left-color: var(--orange); }
 .card-formula.update { border-left-color: var(--purple); }
+.card-formula.summary { border-left-color: #6366f1; }
 .formula-box {
-  background: #f0f4ff; border-radius: 6px; padding: 8px 12px;
+  background: #f0f4ff; border-radius: 6px; padding: 12px 14px;
   font-family: "Consolas","Fira Code",monospace; font-size: .85rem;
   margin-bottom: 8px; line-height: 1.6; color: var(--blue-dark);
+  overflow-x: auto;   /* allow horizontal scrolling for wide LaTeX equations */
 }
+.formula-box .katex { font-size: 1.05em; }
+.formula-box .katex-display { margin: 4px 0; }
+.formula-caption {
+  font-size: .8rem;
+  color: var(--gray-dark);
+  font-style: italic;
+  line-height: 1.45;
+  margin: -2px 4px 10px 4px;
+}
+.formula-caption strong { color: var(--text); font-style: normal; font-weight: 700; }
 .formula-box.intro { background: #f0fdf4; color: #166534; }
 .formula-box.data { background: #f0fdfa; color: #134e4a; }
 .formula-box.loss { background: #fef2f2; color: #991b1b; }
 .formula-box.backward { background: #fff7ed; color: #9a3412; }
 .formula-box.update { background: #f5f3ff; color: #5b21b6; }
+.formula-box.summary { background: #eef2ff; color: #3730a3; }
+
+/* === ANIMATION CONTROLS (Step 18: Full Visual Representation) === */
+.anim-ctrl-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.anim-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  padding: 6px 14px;
+  font-size: .85rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--gray-dark);
+  transition: background .15s, border-color .15s, transform .05s;
+  font-family: inherit;
+}
+.anim-btn:hover { background: #f9fafb; border-color: var(--gray); }
+.anim-btn:active { transform: translateY(1px); }
+.anim-btn:disabled { opacity: .4; cursor: not-allowed; }
+.anim-btn-primary {
+  background: #6366f1; color: white; border-color: #6366f1;
+}
+.anim-btn-primary:hover { background: #4f46e5; border-color: #4f46e5; }
+.anim-counter {
+  margin-left: auto;
+  font-family: 'Consolas', monospace;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--gray-dark);
+}
+.anim-stage-info {
+  background: #eef2ff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border-left: 4px solid #6366f1;
+}
+.anim-stage-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 6px;
+  color: #312e81;
+}
+.anim-stage-desc {
+  font-size: .9rem;
+  line-height: 1.55;
+  color: var(--gray-dark);
+}
 .calc-block {
   font-family: "Consolas","Fira Code",monospace; font-size: .78rem;
   line-height: 1.7; white-space: pre-wrap; color: var(--text);
@@ -213,11 +460,69 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
   line-height: 1.7;
   white-space: pre-wrap;
 }
+.calc-block .var-defs .vd-title {
+  font-weight: 600; margin-bottom: 6px; display: block;
+}
+.calc-block .var-defs .vd-grid {
+  display: grid;
+  grid-template-columns: max-content auto 1fr;
+  column-gap: 10px;
+  row-gap: 4px;
+  align-items: baseline;
+  white-space: normal;
+}
+.calc-block .var-defs .vd-sym {
+  white-space: nowrap; padding-left: 4px;
+}
+.calc-block .var-defs .vd-eq { opacity: .6; }
+.calc-block .var-defs .vd-note {
+  margin-top: 8px; padding-left: 4px;
+  white-space: pre-wrap; line-height: 1.6;
+}
 .card-formula.intro .calc-block .var-defs { background: #f0fdf4; color: #166534; }
 .card-formula.data  .calc-block .var-defs { background: #f0fdfa; color: #134e4a; }
 .card-formula.loss  .calc-block .var-defs { background: #fef2f2; color: #991b1b; }
 .card-formula.backward .calc-block .var-defs { background: #fff7ed; color: #9a3412; }
 .card-formula.update .calc-block .var-defs { background: #f5f3ff; color: #5b21b6; }
+.card-formula.summary .calc-block .var-defs { background: #eef2ff; color: #3730a3; }
+
+/* === STEP COMPASS (what / why / next callout) === */
+.step-compass {
+  display: block;
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  padding: 10px 14px 12px;
+  border-radius: 6px;
+  margin: 0 0 14px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: .82rem;
+  line-height: 1.55;
+  color: #78350f;
+  white-space: normal;
+}
+.step-compass .compass-title {
+  font-weight: 700;
+  font-size: .75rem;
+  color: #92400e;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.step-compass .compass-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 10px;
+  row-gap: 6px;
+  align-items: baseline;
+}
+.step-compass .compass-label {
+  font-weight: 700;
+  white-space: nowrap;
+  color: #92400e;
+}
+.step-compass .compass-text {
+  color: #78350f;
+}
 
 .card-explain p {
   font-size: .85rem; line-height: 1.6; margin-bottom: 8px; color: #374151;
@@ -253,14 +558,32 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
 </style>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div class="app">
-  <header>
-    <h1>Neural Network Regression &mdash; Interactive Explorer</h1>
-    <p>Step through a full forward pass, loss, backpropagation, and weight update</p>
-  </header>
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close" id="sidebar-close" aria-label="Close menu">&times;</button>
+    <div class="sidebar-header">
+      <h2>Neural Network Regression</h2>
+      <p>Interactive Explorer — 16 step walkthrough</p>
+      <div class="sidebar-progress">
+        <div><strong id="sidebar-progress-text">Step 1 of 16</strong></div>
+        <div class="sidebar-progress-bar"><div class="sidebar-progress-fill" id="sidebar-progress-fill"></div></div>
+      </div>
+    </div>
+    <div class="sidebar-tip">
+      👇 <strong>Click any step</strong> in the menu below to navigate, or use the <strong>← / →</strong> arrow keys.
+    </div>
+    <nav id="step-bar"></nav>
+  </aside>
 
-  <div class="step-bar" id="step-bar"></div>
-  <div class="step-title" id="step-title"></div>
+  <main class="main">
+    <button class="mobile-menu-btn" id="mobile-menu-btn">☰ Steps</button>
+    <header>
+      <h1>Neural Network Regression &mdash; Interactive Explorer</h1>
+      <p>Step through a full forward pass, loss, backpropagation, and weight update</p>
+    </header>
+
+    <div class="step-title" id="step-title"></div>
 
   <div class="network-wrap" id="mountain-wrap" style="display:none;">
     <svg id="mountain-svg" viewBox="0 0 880 400" style="width:100%;height:auto;">
@@ -328,6 +651,10 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
   </div>
 
   <div class="network-wrap" id="network-wrap">
+    <div class="network-tabs" id="network-tabs" style="display:none;">
+      <button type="button" class="network-tab active" data-view="backward" onclick="setNetworkView('backward')">📤 Backward · Gradient flow</button>
+      <button type="button" class="network-tab" data-view="forward" onclick="setNetworkView('forward')">📥 Forward · Values used</button>
+    </div>
     <svg id="network-svg" viewBox="0 0 1200 520" style="touch-action: none;"></svg>
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px 0;font-size:.72rem;color:var(--gray);">
       <span>💡 <strong>Tip:</strong> Click and drag any neuron to reposition it (helps if labels overlap)</span>
@@ -358,6 +685,7 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
     <div class="card card-formula" id="formula-card">
       <h3>Formula &amp; Calculation</h3>
       <div id="formula-box" class="formula-box"></div>
+      <div id="formula-caption" class="formula-caption"></div>
       <div id="calc-block" class="calc-block"></div>
     </div>
     <div class="card card-explain" id="explain-card">
@@ -374,6 +702,7 @@ header p { font-size: .85rem; color: var(--gray); margin-top: 2px; }
       <button class="btn primary" id="btn-next" onclick="goStep(1)">Next &raquo;</button>
     </div>
   </div>
+  </main>
 </div>
 
 <script>
@@ -395,6 +724,9 @@ const W3 = [0.9, -0.5, 0.7];
 const b3 = -0.05;
 
 const LR = 0.1;
+// L2 regularization strength (λ). Using 0.01 for visual clarity in the demo;
+// in real training values like 5e-4 to 1e-2 are common. Biases are NOT regularized.
+const L2_LAMBDA = 0.01;
 
 // ════════════════════════════════════════════════════════════════
 // SECTION 2: FORWARD + BACKWARD COMPUTATION
@@ -415,28 +747,50 @@ function computeAll(x) {
   const Z3val = A2[0]*W3[0] + A2[1]*W3[1] + A2[2]*W3[2] + b3;
   const yPred = Z3val;
 
-  const loss = (yTrue - yPred) ** 2;
+  const lossMSE = (yTrue - yPred) ** 2;
+
+  // --- L2 regularization penalty: λ · Σ w² (over weights only, not biases) ---
+  const sumSq = arr => arr.reduce((s, w) => s + w * w, 0);
+  const l2W1Sum = sumSq(W1);
+  const l2W2Sum = W2.reduce((s, row) => s + sumSq(row), 0);
+  const l2W3Sum = sumSq(W3);
+  const l2Sum   = l2W1Sum + l2W2Sum + l2W3Sum;
+  const l2Pen   = L2_LAMBDA * l2Sum;
+  const loss    = lossMSE + l2Pen;          // total objective the optimizer sees
 
   // --- Backward ---
   const dLdy = -2 * (yTrue - yPred);
 
-  const dW3 = A2.map(a => a * dLdy);
+  // Data-only weight gradients (chain-rule from MSE)
+  const dW3data = A2.map(a => a * dLdy);
   const db3g = dLdy;
   const dA2 = W3.map(w => dLdy * w);
 
   const dZ2 = dA2.map((d, i) => Z2[i] > 0 ? d : 0);
 
-  const dW2 = A1.map(a => dZ2.map(d => a * d));
+  const dW2data = A1.map(a => dZ2.map(d => a * d));
   const db2g = [...dZ2];
 
-  const dA1 = [0,1,2].map(j =>
-    dZ2[0]*W2[j][0] + dZ2[1]*W2[j][1] + dZ2[2]*W2[j][2]
+  // ∂L/∂a^[1]_i = Σ_j W^[2]_ij × ∂L/∂z^[2]_j
+  // Index i = Layer 1 neuron (input axis); j = Layer 2 neuron (output axis)
+  const dA1 = [0,1,2].map(i =>
+    W2[i][0]*dZ2[0] + W2[i][1]*dZ2[1] + W2[i][2]*dZ2[2]
   );
 
   const dZ1 = dA1.map((d, i) => Z1[i] > 0 ? d : 0);
 
-  const dW1g = dZ1.map(d => x * d);
+  const dW1data = dZ1.map(d => x * d);
   const db1g = [...dZ1];
+
+  // L2 contribution to each weight gradient: +2λw
+  const dW1L2 = W1.map(w => 2 * L2_LAMBDA * w);
+  const dW2L2 = W2.map(row => row.map(w => 2 * L2_LAMBDA * w));
+  const dW3L2 = W3.map(w => 2 * L2_LAMBDA * w);
+
+  // Final regularized weight gradients (what the optimizer actually uses)
+  const dW1g = dW1data.map((d, i) => d + dW1L2[i]);
+  const dW2  = dW2data.map((row, i) => row.map((d, j) => d + dW2L2[i][j]));
+  const dW3  = dW3data.map((d, i) => d + dW3L2[i]);
 
   const W1n = W1.map((w, i) => w - LR * dW1g[i]);
   const b1n = b1.map((b, i) => b - LR * db1g[i]);
@@ -446,8 +800,14 @@ function computeAll(x) {
   const b3n = b3 - LR * db3g;
 
   return {
-    x, yTrue, Z1, A1, Z2, A2, Z3: Z3val, yPred, loss,
-    dLdy, dW3, db3g, dA2, dZ2, dW2, db2g, dA1, dZ1, dW1g, db1g,
+    x, yTrue, Z1, A1, Z2, A2, Z3: Z3val, yPred,
+    lossMSE, l2W1Sum, l2W2Sum, l2W3Sum, l2Sum, l2Pen, loss, lambda: L2_LAMBDA,
+    dLdy,
+    dW3data, dW3L2, dW3, db3g,
+    dA2, dZ2,
+    dW2data, dW2L2, dW2, db2g,
+    dA1, dZ1,
+    dW1data, dW1L2, dW1g, db1g,
     W1n, b1n, W2n, b2n, W3n, b3n
   };
 }
@@ -695,13 +1055,41 @@ function resetLayout() {
 // SECTION 5: STEP DEFINITIONS
 // ════════════════════════════════════════════════════════════════
 
-// fw = format WEIGHT/KNOWN value (2dp — these are exact constants)
-// fc = format COMPUTED value (4dp — products, sums, activations)
+// fw, fc, f4 all use 2 decimal places for visual consistency.
+// Weights, biases, activations, pre-activations, predictions, gradients,
+// and loss — all rounded to 2dp across the SVG visualization AND the
+// calc blocks. Same number visible in both places.
 function fw(v) { return v.toFixed(2); }
-function fc(v) { return v.toFixed(4); }
-function f3(v) { return v.toFixed(3); }
-function f4(v) { return v.toFixed(4); }
+function fc(v) { return v.toFixed(2); }
+function f4(v) { return v.toFixed(2); }
 function sign(v) { return v >= 0 ? '+' : ''; }
+
+// Helper for a "step at a glance" callout — what we're doing this step,
+// why we're doing it, where the results go next. Designed for backprop steps
+// where the chain of dependencies can otherwise be hard to follow.
+function compass(what, why, next) {
+  return `<div class="step-compass">` +
+    `<div class="compass-title">🧭 At a glance</div>` +
+    `<div class="compass-grid">` +
+      `<span class="compass-label">📍 What:</span><span class="compass-text">${what}</span>` +
+      `<span class="compass-label">🎯 Why:</span><span class="compass-text">${why}</span>` +
+      `<span class="compass-label">➡️ Next:</span><span class="compass-text">${next}</span>` +
+    `</div></div>`;
+}
+
+// Helper for variable-definition blocks with CSS-grid alignment.
+// pairs is an array of [symbolHTML, descriptionHTML] tuples.
+// optionalNote is multi-line HTML/text appended below the grid.
+function vd(title, pairs, optionalNote) {
+  let html = `<div class="var-defs"><span class="vd-title">${title}</span><div class="vd-grid">`;
+  for (const [sym, desc] of pairs) {
+    html += `<span class="vd-sym">${sym}</span><span class="vd-eq">=</span><span class="vd-desc">${desc}</span>`;
+  }
+  html += `</div>`;
+  if (optionalNote) html += `<div class="vd-note">${optionalNote}</div>`;
+  html += `</div>`;
+  return html;
+}
 
 function getSteps(s) {
   return [
@@ -709,7 +1097,8 @@ function getSteps(s) {
 // ── 0: Why Neural Networks? (Mountain Analogy) ──
 {
   phase: 'intro', title: 'The Challenge: Why Neural Networks?',
-  formula: 'Goal: Find the set of weights that minimizes prediction error',
+  formula: 'Goal: Find the weights AND biases that minimize prediction error',
+  formulaCaption: '<strong>Goal:</strong> Find values for all 22 parameters that make the network\'s predictions as close as possible to the true targets.',
   calc: `The Problem:\n  We have data. We want to predict outcomes.\n  But the relationship between inputs and outputs\n  is complex, nonlinear, and high-dimensional.\n\nThe Approach:\n  A neural network learns by trial and error:\n  1. Make a prediction (forward pass)\n  2. Measure how wrong it is (loss)\n  3. Figure out what to adjust (backpropagation)\n  4. Make small corrections (weight update)\n  5. Repeat thousands of times`,
   explain: `<p><strong>Before we look at any math</strong>, let's understand what a neural network is actually trying to do -- and why it's hard.</p>
 <p>Look at the mountain landscape above. Imagine you're the <span style="color:#ef4444;font-weight:700">red dot</span>, standing on a mountain range <strong>in thick fog</strong>. Your goal: reach the lowest valley. That valley represents the <strong>best possible prediction</strong> your model can make.</p>
@@ -727,12 +1116,15 @@ function getSteps(s) {
 // ── 1: Data Preparation ──
 {
   phase: 'data', title: 'Data Preparation: Standardization',
-  formula: `StandardScaler:  x_scaled = (value − mean) / std_dev`,
+  formula: String.raw`$$\text{StandardScaler:}\quad x_{\text{scaled}} = \frac{\text{value} - \mu}{\sigma}`,
+  formulaCaption: '<strong>What it does:</strong> Re-centers each feature to mean 0 and standard deviation 1 so every column is on a comparable scale before training.',
   calc: (() => {
     const xv = parseFloat(fw(s.x));
     const contextVals = [-0.84, -0.54, 0.34, 0.82];
     const months = ['Jan','Apr','Aug','Nov'];
-    let t = `RAW dataset (before scaling):\n\n`;
+    let t = `RAW dataset (synthetic for illustration):\n`;
+    t += `Revenue here = sin(2π × scaled Ad Spend) × 50 + 50 — chosen because\n`;
+    t += `it's nonlinear (a neural network can learn it; linear regression cannot).\n\n`;
     t += `  Row  |  Month   | Ad Spend  | Revenue\n`;
     t += `  ─────┼──────────┼───────────┼──────────\n`;
     for (let i = 0; i < 2; i++) {
@@ -765,7 +1157,7 @@ function getSteps(s) {
   explain: `<p><strong>Before training a neural network, we must scale the raw data.</strong> This is called <strong>data preprocessing</strong> — and skipping it is one of the most common beginner mistakes in machine learning.</p>
 <p><strong>Why can't we use raw dollar values?</strong> Imagine feeding $50,000 into a network with tiny weights near 0.5. The weighted sum would be 25,000 — enormously large. Gradients would explode, the network would overshoot wildly, and it would never converge. We need small, uniform numbers.</p>
 <p><strong>StandardScaler</strong> (z-score standardization) is the most common scaling technique in practice. It transforms each feature using:<br><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">x_scaled = (value − mean) / std_dev</code></p>
-<p>This <strong>centers data around 0</strong> (the mean becomes 0) and scales it so most values fall between <strong>−1 and 1</strong>. The result: every feature is on the same playing field, gradients stay small and stable, and the network can learn efficiently.</p>
+<p>This <strong>centers data around 0</strong> (the mean becomes 0) and scales by standard deviation. For roughly normal data, about <strong>68% of values fall within [−1, 1]</strong> and 95% within [−2, 2]. The result: every feature is on the same playing field, gradients stay small and stable, and the network can learn efficiently.</p>
 <p><strong>In our example:</strong> Ad Spend = $${(s.x*50+50).toFixed(0)}k becomes x = ${fw(s.x)}, and Revenue = $${(s.yTrue*50+50).toFixed(0)}k becomes y_true = ${f4(s.yTrue)}. These small numbers are what the network actually trains on.</p>
 <p><strong>After training</strong>, we reverse the transformation to convert predictions back to real dollars: <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">revenue = ŷ × std_dev + mean</code></p>
 <div class="key-insight"><strong>In scikit-learn, this is one line:</strong> <code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">from sklearn.preprocessing import StandardScaler</code><br><code style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">X_scaled = StandardScaler().fit_transform(X)</code><br>The scaler computes mean and std from your training data, transforms it, and you're ready to train.</div>`,
@@ -778,6 +1170,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Meet the Network',
   formula: `Ad Spend: $${(s.x*50+50).toFixed(0)}k → x = ${fw(s.x)}    |    Target Revenue: $${(s.yTrue*50+50).toFixed(0)}k → y = ${f4(s.yTrue)}`,
+  formulaCaption: '<strong>What it does:</strong> Architecture overview — shows how one standardized input flows through 3 dense layers to produce a prediction.',
   calc: `Standardized data (from previous step):\n  x = ${fw(s.x)}     (Ad Spend: $${(s.x*50+50).toFixed(0)}k)\n  y_true = ${f4(s.yTrue)}  (Revenue: $${(s.yTrue*50+50).toFixed(0)}k)\n\nNetwork Architecture:\n  Input(1) → Dense(3) → ReLU → Dense(3) → ReLU → Dense(1) → Linear\n  22 learnable parameters (weights + biases)\n\nThe input node receives x = ${fw(s.x)}.\nThe network will transform this through its layers\nto produce a prediction (ŷ).`,
   explain: `<p><strong>How do neural networks work with data?</strong> ANNs work with tabular data (spreadsheets, dataframes) by processing <strong>one row at a time</strong>. Each row's feature values are fed into the input neurons, the network computes a prediction, and the error is used to update the weights. Repeat across all rows for many rounds (epochs), and the network learns the pattern.</p>
 <p>The input node (labeled <strong>x = ${fw(s.x)}</strong>) receives the <em>standardized</em> value we prepared in the previous step. Use the slider to pick a different Ad Spend value and see how the numbers change.</p>
@@ -801,6 +1194,7 @@ function getSteps(s) {
 {
   phase: 'forward', title: 'Feed Input Into Network',
   formula: `x = ${fw(s.x)} → enters the input neuron`,
+  formulaCaption: '<strong>What it does:</strong> Places the standardized input value at the input neuron — the starting point of every forward pass.',
   calc: `From our StandardScaler-processed data:\n  Ad Spend: $${(s.x*50+50).toFixed(0)}k → standardized to x = ${fw(s.x)}\n  Revenue:  $${(s.yTrue*50+50).toFixed(0)}k → standardized to y_true = ${f4(s.yTrue)}\n\nThe network receives the standardized x = ${fw(s.x)}\nat the input neuron. Now it will process this value\nthrough its layers to produce a prediction (ŷ).`,
   explain: `<p>We take the standardized feature value <strong>x = ${fw(s.x)}</strong> from our data and feed it into the network's input neuron. This is the starting point of the <strong>forward pass</strong>.</p>
 <p>The network will now multiply this value by different weights, add biases, and apply activation functions — layer by layer — until it produces a prediction at the output.</p>
@@ -816,26 +1210,32 @@ function getSteps(s) {
 // ── 2: Dense Layer 1 Weighted Sum ──
 {
   phase: 'forward', title: 'Hidden Layer 1: Weighted Sum',
-  formula: 'z = x × w + b    (weighted sum = input × weight + bias)',
+  formula: String.raw`$$z^{[1]}_i = x \cdot W^{[1]}_i + b^{[1]}_i, \quad i \in \{1, 2, 3\}`,
+  formulaCaption: '<strong>What it does:</strong> Multiplies the input by each neuron\'s weight, then adds that neuron\'s bias — produces one "raw score" per Layer 1 neuron.',
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  x = input value (our standardized row data)\n`;
-    t += `  w = weight (how much this neuron "cares" about x)\n`;
-    t += `  b = bias (a starting offset — lets the neuron\n`;
-    t += `      activate even when the input is 0)\n`;
-    t += `  z = weighted sum (raw score before activation)</div>\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(x\\)',         'input value (the standardized row)'],
+      ['\\(W^{[1]}_i\\)', 'Layer 1 weight for neuron i (3 weights total)'],
+      ['\\(b^{[1]}_i\\)', 'Layer 1 bias for neuron i (3 biases total)'],
+      ['\\(z^{[1]}_i\\)', 'Layer 1 pre-activation (weighted sum) for neuron i'],
+      ['\\([1]\\)',       'layer index — Layer 1 (the first hidden layer)']
+    ], `Note: in vector form this is \\(z^{[1]} = x \\cdot W^{[1]} + b^{[1]}\\)`) + `\n`;
     for (let i = 0; i < 3; i++) {
-      t += `Neuron ${i+1}:  z =  x   ×   w   +   b\n`;
-      t += `          = ${fw(s.x)} × ${fw(W1[i])} + ${fw(b1[i])}\n`;
-      t += `          = ${fc(s.x * W1[i])} + ${fw(b1[i])}\n`;
-      t += `          = <span class="result">${fc(s.Z1[i])}</span>\n\n`;
+      t += `Neuron ${i+1}:  \\(z^{[1]}_${i+1} = x \\cdot W^{[1]}_${i+1} + b^{[1]}_${i+1}\\)\n`;
+      t += `             = ${fw(s.x)} × ${fw(W1[i])} + ${fw(b1[i])}\n`;
+      t += `             = ${fc(s.x * W1[i])} + ${fw(b1[i])}\n`;
+      t += `             = <span class="result">${fc(s.Z1[i])}</span>\n\n`;
     }
     return t;
   })(),
-  explain: `<p>Each neuron computes a <strong>weighted sum</strong>: multiply the input by a weight, then add a bias.</p>
+  explain: `<p>Each neuron computes a <strong>weighted sum</strong>: multiply the input by a weight, then add a bias. The superscript <strong>[1]</strong> just labels "Layer 1" so it doesn't get confused with Layer 2 or the output layer later.</p>
 <p><strong>What is a weight?</strong> A weight controls how much influence the input has on this neuron. A large positive weight means "this input matters a lot." A negative weight means "flip the signal." A weight near zero means "mostly ignore this input." During training, the network adjusts these weights to improve predictions.</p>
 <p><strong>What is a bias? Why do we need it?</strong> The bias is an offset that lets the neuron fire even when the input is 0. Without bias, if x = 0, the output would always be 0 × w = 0 regardless of the weight. The bias gives the neuron flexibility to shift its output up or down — just like the <strong>b</strong> in the equation y = mx + <strong>b</strong>. It sets a baseline that the neuron can build on.</p>
-<p><strong>How do we choose starting weights?</strong> We initialize weights <strong>randomly</strong> — small random numbers near zero. Why not start them all at the same value? If every neuron had identical weights, they'd all compute the exact same thing and learn the exact same pattern — the entire layer would be redundant. Random initialization <strong>breaks this symmetry</strong>, letting each neuron specialize in detecting different features. Biases typically start at 0 or small values.</p>
+<p><strong>How do we choose starting weights?</strong> We initialize weights <strong>randomly</strong> — small numbers near zero. Why not all the same? If every neuron started identical, they'd compute the same thing and learn the same pattern — the entire layer would be redundant. Random initialization <strong>breaks this symmetry</strong>, letting each neuron specialize. Common schemes:</p>
+<p style="margin-left:14px;"><strong>• Naive:</strong> <code>w = 0.01 × randn()</code> — simple but can underflow in deep nets.<br>
+<strong>• Xavier/Glorot:</strong> <code>w ~ N(0, 1/n_in)</code> — good for tanh/sigmoid.<br>
+<strong>• He init:</strong> <code>w ~ N(0, 2/n_in)</code> — best for <strong>ReLU</strong> networks (what our companion Python code uses).</p>
+<p>Biases typically start at 0 or small values — no symmetry-breaking needed since they don't multiply with each other.</p>
 <p>With x = ${fw(s.x)}, the three neurons produce raw scores: <strong>[${s.Z1.map(z=>fc(z)).join(', ')}]</strong>. These "pre-activation" values go to ReLU next.</p>
 <div class="key-insight"><strong>Notice:</strong> Neuron 2 has weight ${fw(W1[1])} (negative!), so it flips the input's sign. With x = ${fw(s.x)} and bias ${fw(b1[1])}, it gets z = ${fc(s.Z1[1])}${s.Z1[1] < 0 ? '. That negative score means this neuron will be <strong>silenced</strong> by ReLU in the next step — it won\'t participate in this prediction at all.' : '. It survived — this neuron will stay active.'}</div>`,
   render(s) {
@@ -853,25 +1253,28 @@ function getSteps(s) {
 // ── 3: ReLU 1 ──
 {
   phase: 'forward', title: 'Hidden Layer 1: ReLU Activation',
-  formula: 'a_i = max(0, z_i)',
+  formula: String.raw`$$a^{[1]}_i = \max(0,\, z^{[1]}_i)`,
+  formulaCaption: '<strong>What it does:</strong> Keeps positive raw scores, replaces negative ones with 0 — adds the non-linearity that lets the network learn complex patterns.',
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  z_i = pre-activation (weighted sum) from previous step\n`;
-    t += `  a_i = activation (ReLU output) — what the next layer sees\n`;
-    t += `  max(0, z) = "if z is positive, keep it; if negative, zero it"</div>\n`;
-    t += `─── Apply ReLU to each neuron ───\n\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(z^{[1]}_i\\)',  'pre-activation (weighted sum) from previous step'],
+      ['\\(a^{[1]}_i\\)',  'activation (ReLU output) — what Layer 2 will see'],
+      ['\\(\\max(0, z)\\)', '"if z is positive, keep it; if negative, zero it"']
+    ]) + `\n`;
+    t += `─── Apply ReLU to each Layer 1 neuron ───\n\n`;
     for (let i = 0; i < 3; i++) {
       const alive = s.Z1[i] > 0;
       const cls = alive ? 'alive' : 'dead';
       const tag = alive ? '✓ passes through' : '✗ BLOCKED (set to 0)';
-      t += `<span class="${cls}">Neuron ${i+1}:  a_${i+1} = max(0, ${fc(s.Z1[i])}) = ${fc(s.A1[i])}  ${tag}</span>\n`;
+      t += `<span class="${cls}">Neuron ${i+1}:  \\(a^{[1]}_${i+1} = \\max(0,\\,${fc(s.Z1[i])})\\) = ${fc(s.A1[i])}  ${tag}</span>\n`;
     }
     return t;
   })(),
   explain: `<p><strong>ReLU</strong> (Rectified Linear Unit) is the activation function for hidden layers. It does one simple thing: if the value is <strong>positive</strong>, it passes through unchanged. If <strong>negative or zero</strong>, it becomes 0.</p>
-<p><strong>Why zero it out?</strong> Zeroing means this neuron is <em>turned off</em> for this particular input. It produces no signal, contributes nothing to the prediction, and won't receive any weight updates during backpropagation. It's as if the neuron doesn't exist for this data point. This lets the network learn selective patterns -- different neurons activate for different inputs, like how different features matter for different observations in a dataset.</p>
-<p>Output: <strong>[${s.A1.map(a=>fc(a)).join(', ')}]</strong>${s.A1.some(a=>a===0) ? ' -- zeroed neurons carry no information forward. Only the active neurons shape the prediction.' : ''}</p>
-<div class="key-insight"><strong>Why do we need ReLU at all?</strong> Without an activation function, stacking layers would be pointless -- multiplying matrices together just gives you another matrix. The entire deep network would collapse into a single linear equation (like plain linear regression). ReLU adds the <strong>nonlinearity</strong> that lets the network learn curves, thresholds, and complex patterns that a straight line never could.</div>`,
+<p><strong>Why zero it out?</strong> Zeroing means this neuron is <em>turned off</em> for this particular input. It produces no signal, contributes nothing to the prediction, and won't receive any weight updates during backpropagation. It's as if the neuron doesn't exist for this data point. This lets the network learn selective patterns — different neurons specialize in different patterns; only the relevant ones fire for any given input.</p>
+<p>Output: <strong>[${s.A1.map(a=>fc(a)).join(', ')}]</strong>${s.A1.some(a=>a===0) ? ' — zeroed neurons carry no information forward. Only the active neurons shape the prediction.' : ''}</p>
+<p><strong>Why ReLU and not sigmoid/tanh?</strong> Older networks used sigmoid (squashes to [0, 1]) or tanh (squashes to [−1, 1]). They worked but suffered from <strong>vanishing gradients</strong>: in the saturated parts of the curve (very large or very small inputs), the derivative is near 0, so backprop multiplied by tiny gradients → no learning signal reaches early layers. ReLU's derivative is exactly <strong>1</strong> for active neurons, preserving gradient magnitude through deep networks. The tradeoff is the "dying ReLU" problem we'll see in backprop (dead neurons can't recover). Modern fixes: Leaky ReLU, ELU, GELU.</p>
+<div class="key-insight"><strong>Why do we need ANY activation function?</strong> Without one, stacking layers would be pointless — multiplying matrices together just gives you another matrix. The entire deep network would collapse into a single linear equation (like plain linear regression). The activation adds the <strong>nonlinearity</strong> that lets the network learn curves, thresholds, and complex patterns that a straight line never could.</div>`,
   render(s) {
     dimAll();
     activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
@@ -887,26 +1290,29 @@ function getSteps(s) {
 // ── 4: Dense Layer 2 ──
 {
   phase: 'forward', title: 'Hidden Layer 2: Weighted Sum',
-  formula: 'z_j = Σ_i (a_i × w_ij) + b_j',
+  formula: String.raw`$$z^{[2]}_j = \sum_i a^{[1]}_i \cdot W^{[2]}_{ij} + b^{[2]}_j`,
+  formulaCaption: '<strong>What it does:</strong> Each Layer 2 neuron takes a weighted sum of ALL Layer 1 activations, then adds its bias — combining signals from every neuron in the previous layer.',
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  a_i  = activation from Layer 1 neuron i (ReLU output)\n`;
-    t += `  w_ij = weight from Layer 1 neuron i → Layer 2 neuron j\n`;
-    t += `  b_j  = bias of Layer 2 neuron j\n`;
-    t += `  z_j  = weighted sum (raw score) for Layer 2 neuron j</div>\n`;
-    t += `Where do w and b values come from?\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(a^{[1]}_i\\)',    'activation from Layer 1 neuron i (the ReLU output)'],
+      ['\\(W^{[2]}_{ij}\\)', 'weight from Layer 1 neuron i → Layer 2 neuron j'],
+      ['\\(b^{[2]}_j\\)',    'Layer 2 bias for neuron j'],
+      ['\\(z^{[2]}_j\\)',    'Layer 2 pre-activation (weighted sum) for neuron j'],
+      ['\\(\\sum_i\\)',      'sum over the 3 incoming Layer 1 activations']
+    ]) + `\n`;
+    t += `Where do W and b values come from?\n`;
     t += `  In our demo, weights and biases are HARDCODED initial\n`;
     t += `  values so the math is reproducible. In real training,\n`;
     t += `  weights start RANDOM (small numbers near 0) and biases\n`;
     t += `  usually start at 0. Both are then UPDATED every iteration\n`;
     t += `  by gradient descent (see the final "Weight Update" step).\n\n`;
-    t += `Layer 2 weights (W2 matrix)        Layer 2 biases (b2)\n`;
-    t += `  W2[0] = [${fw(W2[0][0])}, ${fw(W2[0][1])}, ${fw(W2[0][2])}]      b_1 = ${fw(b2[0])}\n`;
-    t += `  W2[1] = [${fw(W2[1][0])},  ${fw(W2[1][1])}, ${fw(W2[1][2])}]      b_2 = ${fw(b2[1])}\n`;
-    t += `  W2[2] = [${fw(W2[2][0])}, ${fw(W2[2][1])},  ${fw(W2[2][2])}]      b_3 = ${fw(b2[2])}\n\n`;
+    t += `Layer 2 weights (\\(W^{[2]}\\) matrix)     Layer 2 biases (\\(b^{[2]}\\))\n`;
+    t += `  \\(W^{[2]}_{1,\\cdot}\\) = [${fw(W2[0][0])}, ${fw(W2[0][1])}, ${fw(W2[0][2])}]    \\(b^{[2]}_1\\) = ${fw(b2[0])}\n`;
+    t += `  \\(W^{[2]}_{2,\\cdot}\\) = [${fw(W2[1][0])},  ${fw(W2[1][1])}, ${fw(W2[1][2])}]    \\(b^{[2]}_2\\) = ${fw(b2[1])}\n`;
+    t += `  \\(W^{[2]}_{3,\\cdot}\\) = [${fw(W2[2][0])}, ${fw(W2[2][1])},  ${fw(W2[2][2])}]    \\(b^{[2]}_3\\) = ${fw(b2[2])}\n\n`;
     t += `─── Calculations ───\n\n`;
     for (let j = 0; j < 3; j++) {
-      t += `Neuron ${j+1}:  z_${j+1} = `;
+      t += `Neuron ${j+1}:  \\(z^{[2]}_${j+1}\\) = `;
       const terms = [];
       for (let i = 0; i < 3; i++) {
         terms.push(`${fc(s.A1[i])}×${fw(W2[i][j])}`);
@@ -914,8 +1320,8 @@ function getSteps(s) {
       t += terms.join(' + ') + ` + ${fw(b2[j])}\n`;
       const vals = [];
       for (let i = 0; i < 3; i++) vals.push(fc(s.A1[i] * W2[i][j]));
-      t += `          = ${vals.join(' + ')} + ${fw(b2[j])}\n`;
-      t += `          = <span class="result">${fc(s.Z2[j])}</span>\n\n`;
+      t += `             = ${vals.join(' + ')} + ${fw(b2[j])}\n`;
+      t += `             = <span class="result">${fc(s.Z2[j])}</span>\n\n`;
     }
     return t;
   })(),
@@ -943,18 +1349,20 @@ function getSteps(s) {
 // ── 5: ReLU 2 ──
 {
   phase: 'forward', title: 'Hidden Layer 2: ReLU Activation',
-  formula: 'a_j = max(0, z_j)',
+  formula: String.raw`$$a^{[2]}_j = \max(0,\, z^{[2]}_j)`,
+  formulaCaption: '<strong>What it does:</strong> Applies ReLU again — keep positives, zero out negatives. Layer 2 activations then feed into the output layer.',
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  z_j = pre-activation (weighted sum) from Layer 2\n`;
-    t += `  a_j = activation (ReLU output) — what the output layer sees\n`;
-    t += `  max(0, z) = ReLU gate (keep positives, zero negatives)</div>\n`;
-    t += `─── Apply ReLU to each neuron ───\n\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(z^{[2]}_j\\)',  'Layer 2 pre-activation from previous step'],
+      ['\\(a^{[2]}_j\\)',  'Layer 2 activation (ReLU output) — what the output layer sees'],
+      ['\\(\\max(0, z)\\)', 'ReLU gate (keep positives, zero negatives)']
+    ]) + `\n`;
+    t += `─── Apply ReLU to each Layer 2 neuron ───\n\n`;
     for (let j = 0; j < 3; j++) {
       const alive = s.Z2[j] > 0;
       const cls = alive ? 'alive' : 'dead';
       const tag = alive ? '✓ passes' : '✗ BLOCKED';
-      t += `<span class="${cls}">Neuron ${j+1}:  a_${j+1} = max(0, ${fc(s.Z2[j])}) = ${fc(s.A2[j])}  ${tag}</span>\n`;
+      t += `<span class="${cls}">Neuron ${j+1}:  \\(a^{[2]}_${j+1} = \\max(0,\\,${fc(s.Z2[j])})\\) = ${fc(s.A2[j])}  ${tag}</span>\n`;
     }
     t += `\nActivation output: [${s.A2.map(a=>fc(a)).join(', ')}]`;
     t += `\nThese values feed into the output layer.`;
@@ -979,33 +1387,37 @@ function getSteps(s) {
 // ── 6: Output Layer ──
 {
   phase: 'forward', title: 'Output: Weighted Sum + Linear Activation',
-  formula: 'ŷ = f(z) = z = Σ_i (a_i × w_i) + b',
+  formula: String.raw`$$z^{[3]} = \sum_i a^{[2]}_i \cdot W^{[3]}_i + b^{[3]} \qquad \hat{y} = f(z^{[3]}) = z^{[3]}\ \ \text{(linear)}`,
+  formulaCaption: '<strong>What it does:</strong> Final weighted sum produces the prediction. Linear activation lets the output be any real number (suitable for regression).',
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  a_i = activation from Layer 2 neuron i (ReLU output)\n`;
-    t += `  w_i = output layer weight from Layer 2 neuron i → output\n`;
-    t += `  b   = output layer bias (single value)\n`;
-    t += `  z   = weighted sum (raw score) at the output\n`;
-    t += `  f() = activation function — here it's LINEAR (identity)\n`;
-    t += `  ŷ   = the network's final prediction (standardized)</div>\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(a^{[2]}_i\\)', 'activation from Layer 2 neuron i (ReLU output)'],
+      ['\\(W^{[3]}_i\\)', 'output layer weight from Layer 2 neuron i → output'],
+      ['\\(b^{[3]}\\)',   'output layer bias (single scalar, since output is 1-D)'],
+      ['\\(z^{[3]}\\)',   'output layer pre-activation (weighted sum)'],
+      ['\\(f()\\)',       'activation function — here it\'s LINEAR (identity)'],
+      ['\\(\\hat{y}\\)',  'the network\'s final prediction (standardized)']
+    ]) + `\n`;
     t += `Output layer parameters (hardcoded for the demo):\n`;
-    t += `  W3 = [${fw(W3[0])}, ${fw(W3[1])}, ${fw(W3[2])}]   b3 = ${fw(b3)}\n\n`;
+    t += `  \\(W^{[3]}\\) = [${fw(W3[0])}, ${fw(W3[1])}, ${fw(W3[2])}]   \\(b^{[3]}\\) = ${fw(b3)}\n\n`;
     t += `─── Calculation ───\n\n`;
     const terms = [];
     for (let i = 0; i < 3; i++) terms.push(`${fc(s.A2[i])}×${fw(W3[i])}`);
-    t += `Weighted sum:\n  z = ${terms.join(' + ')} + ${fw(b3)}\n`;
+    t += `Step 1 — Weighted sum:\n`;
+    t += `  \\(z^{[3]}\\) = ${terms.join(' + ')} + ${fw(b3)}\n`;
     const vals = s.A2.map((a,i) => fc(a * W3[i]));
-    t += `    = ${vals.join(' + ')} + ${fw(b3)}\n`;
-    t += `    = <span class="result">${fc(s.Z3)}</span>\n\n`;
-    t += `Linear activation:\n  ŷ = f(z) = z = <span class="result">${fc(s.yPred)}</span>\n\n`;
-    t += `(Linear just passes the value through unchanged — no squashing)`;
+    t += `        = ${vals.join(' + ')} + ${fw(b3)}\n`;
+    t += `        = <span class="result">${fc(s.Z3)}</span>\n\n`;
+    t += `Step 2 — Linear activation (just passes through):\n`;
+    t += `  \\(\\hat{y} = f(z^{[3]}) = z^{[3]}\\) = <span class="result">${fc(s.yPred)}</span>\n`;
     return t;
   })(),
-  explain: `<p>The single output neuron computes another weighted sum. Then the <strong>Linear activation</strong> (identity function) passes it through unchanged: f(z) = z.</p>
-<p>Our predicted Revenue: <strong>ŷ = ${f3(s.yPred)}</strong></p>
+  explain: `<p>The single output neuron computes another weighted sum, then applies a <strong>Linear activation</strong> — just the identity function f(z) = z. The activation doesn't change the value; it's there for symmetry with hidden layers.</p>
+<p>Our predicted Revenue: <strong>ŷ = ${fc(s.yPred)}</strong></p>
 <p>The actual Revenue from our data: <strong>y = ${f4(s.yTrue)}</strong></p>
-<p>How far off: ${f3(s.yPred)} - ${f4(s.yTrue)} = <strong>${f3(s.yPred - s.yTrue)}</strong></p>
-<div class="key-insight"><strong>Classification vs Regression:</strong> Classification uses <strong>Softmax</strong> to squeeze outputs into probabilities [0, 1]. Regression uses <strong>Linear</strong> to allow any real number — the network can predict any dollar amount, positive or negative.</div>`,
+<p>How far off (residual): \\(y_{\\text{true}} - \\hat{y}\\) = ${f4(s.yTrue)} - ${fc(s.yPred)} = <strong>${fc(s.yTrue - s.yPred)}</strong></p>
+<p><strong>Why linear and not sigmoid/ReLU on the output?</strong> Regression targets can be any real number — house prices, temperatures, revenues. If we used sigmoid (squashes to [0, 1]) the network couldn't predict negative or large values. If we used ReLU, it couldn't predict anything negative. Linear lets ŷ be any real number, matching the unbounded nature of the target.</p>
+<div class="key-insight"><strong>Classification vs Regression:</strong> Classification uses <strong>Softmax</strong> to squeeze outputs into probabilities [0, 1]. Regression uses <strong>Linear</strong> to allow any real number — the network can predict any value, positive or negative.</div>`,
   render(s) {
     dimAll();
     for (let i = 0; i < 3; i++) {
@@ -1022,32 +1434,115 @@ function getSteps(s) {
 // ── 7: Loss ──
 {
   phase: 'loss', title: 'Loss: Mean Squared Error (MSE)',
-  formula: 'L = (y_true - ŷ)²',
-  calc: `<div class="var-defs">Variable definitions:
-  y_true = the actual target value (standardized Revenue)
-  ŷ      = the network's prediction (standardized)
-  L      = loss (a single number measuring "how wrong")
-  ()²    = squaring — makes errors positive + amplifies big ones</div>
-─── Calculation ───
-
-L = (y_true - ŷ)²
-  = (${f4(s.yTrue)} - ${f3(s.yPred)})²
-  = (${f4(s.yTrue - s.yPred)})²
-  = <span class="result">${f4(s.loss)}</span>`,
+  formula: String.raw`$$L_{\text{sample}} = (y_{\text{true}} - \hat{y})^2 \qquad L_{\text{batch}} = \tfrac{1}{N}\textstyle\sum_n L_{\text{sample},n}`,
+  formulaCaption: '<strong>What it does:</strong> Measures how wrong the prediction is — squared so errors are always positive and large mistakes are penalized far more than small ones.',
+  calc: vd('Variable definitions:', [
+    ['\\(y_{\\text{true}}\\)',  'the actual target value (standardized Revenue)'],
+    ['\\(\\hat{y}\\)',          'the network\'s prediction (standardized)'],
+    ['\\(L_{\\text{sample}}\\)', 'SQUARED ERROR for this one row'],
+    ['\\(L\\)',                 'MSE = mean of L_sample across all N samples in a batch'],
+    ['\\((\\,)^2\\)',           'squaring — makes errors positive + amplifies big ones']
+  ], `Note: we're showing ONE sample's contribution. In real training the loss is averaged over a batch of (e.g.) 32 samples.`)
++ `\n─── Calculation (one sample) ───\n\n`
++ `\\(L_{\\text{sample}} = (y_{\\text{true}} - \\hat{y})^2\\)\n`
++ `         = (${f4(s.yTrue)} - ${fc(s.yPred)})²\n`
++ `         = (${f4(s.yTrue - s.yPred)})²\n`
++ `         = <span class="result">${f4(s.lossMSE)}</span>\n\n`
++ `For a batch of N samples: \\(L = \\frac{1}{N} \\sum_n L_{\\text{sample},n}\\)`,
   explain: `<p><strong>Mean Squared Error</strong> measures how far off our prediction is from the true value. If you've done any statistics or regression, this is the same squared-residual you know from OLS -- just applied one sample at a time.</p>
 <p>Why square it?</p>
 <p>1. All errors become positive (whether we overestimate or underestimate)<br>
 2. Large errors are punished <strong>much</strong> more than small ones (an error of 2 costs 4x as much as an error of 1)</p>
-<p>Our loss: <strong>${f4(s.loss)}</strong>. ${s.loss < 0.01 ? 'Very small -- the prediction is close!' : s.loss < 0.1 ? 'Moderate error.' : 'Significant error -- the network needs to adjust its weights.'}</p>
-<p>🏔️ <em>Mountain analogy: We just checked our altimeter. Loss = ${f4(s.loss)} is our altitude -- ${s.loss < 0.01 ? 'we\'re very close to the valley floor!' : s.loss < 0.1 ? 'we\'re partway down.' : 'we\'re still high up. Time to figure out which direction is downhill.'}</em></p>
-<div class="key-insight"><strong>What comes next:</strong> We know the error. Now we need to figure out <strong>which of the 22 weights to blame</strong> for it and <strong>how much to adjust each one</strong>. That's what backpropagation does -- it's like a sensitivity analysis that traces the error back to each individual parameter.</div>`,
+<p>Our MSE: <strong>${f4(s.lossMSE)}</strong>. ${s.lossMSE < 0.01 ? 'Very small -- the prediction is close!' : s.lossMSE < 0.1 ? 'Moderate error.' : 'Significant error -- the network needs to adjust its weights.'}</p>
+<p>🏔️ <em>Mountain analogy: We just checked our altimeter. MSE = ${f4(s.lossMSE)} is our altitude -- ${s.lossMSE < 0.01 ? 'we\'re very close to the valley floor!' : s.lossMSE < 0.1 ? 'we\'re partway down.' : 'we\'re still high up. Time to figure out which direction is downhill.'}</em></p>
+<div class="key-insight"><strong>What comes next:</strong> Before we trace the blame backward, we'll add one extra term to the loss — an <strong>L2 regularization penalty</strong> on the weights — that keeps the network from growing crazy-large weights and helps it generalize. Then backpropagation will use the <em>regularized</em> loss as its starting point.</div>`,
   render(s) {
     dimAll();
-    activateNode(3, 0, 'active-fwd', 'ŷ', f3(s.yPred));
+    activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
     getEl('e-loss').className.baseVal = 'edge flow-fwd';
     getEl('c-loss').setAttribute('stroke', 'var(--red)');
     getEl('c-loss').setAttribute('fill', 'var(--red-light)');
     getEl('lbl-loss').textContent = 'L';
+    getEl('val-loss').textContent = f4(s.lossMSE);
+  }
+},
+
+// ── NEW: Regularized Loss (L2 penalty) ──
+{
+  phase: 'loss', title: 'Regularized Loss: L2 Penalty',
+  formula: String.raw`$$L_{\text{total}} = \underbrace{(y_{\text{true}} - \hat{y})^2}_{\text{MSE — fit the data}} + \underbrace{\lambda \sum_w w^2}_{\text{L2 penalty — stay simple}}`,
+  formulaCaption: '<strong>What it does:</strong> Adds a penalty for large weights. The network now optimizes two things at once — fit the data (low MSE) AND keep weights small (better generalization).',
+  calc: (() => {
+    let t = vd('Variable definitions:', [
+      ['\\(L_{\\text{total}}\\)',          'final objective the optimizer minimizes (MSE + penalty)'],
+      ['\\(\\text{MSE}\\)',                 'squared-error from the previous step (fit term)'],
+      ['\\(\\lambda\\)',                    'regularization strength — how harshly to punish big weights'],
+      ['\\(\\sum_w w^2\\)',                 'sum of squared weights across the WHOLE network'],
+      ['\\(W^{[1]}, W^{[2]}, W^{[3]}\\)',  'the 15 weights (biases are NOT regularized)']
+    ], `Note: only weights enter the penalty. Biases are left alone because they shift the function rather than scale it.`) + `\n`;
+
+    t += `─── Step A: sum of squared weights, layer by layer ───\n\n`;
+    // Layer 1
+    t += `Layer 1 weights (3): \\(W^{[1]}\\) = [${W1.map(fw).join(', ')}]\n`;
+    t += `  \\(\\sum (W^{[1]})^2\\) = ${W1.map(w => `${fw(w)}²`).join(' + ')}\n`;
+    t += `             = ${W1.map(w => fc(w*w)).join(' + ')}\n`;
+    t += `             = <span class="result">${fc(s.l2W1Sum)}</span>\n\n`;
+    // Layer 2
+    t += `Layer 2 weights (9):\n`;
+    for (let i = 0; i < 3; i++) {
+      t += `  row ${i+1}: ${W2[i].map(w => `${fw(w)}²`).join(' + ')} = ${fc(W2[i].reduce((s,w)=>s+w*w,0))}\n`;
+    }
+    t += `  \\(\\sum (W^{[2]})^2\\) = <span class="result">${fc(s.l2W2Sum)}</span>\n\n`;
+    // Layer 3
+    t += `Output weights (3): \\(W^{[3]}\\) = [${W3.map(fw).join(', ')}]\n`;
+    t += `  \\(\\sum (W^{[3]})^2\\) = ${W3.map(w => `${fw(w)}²`).join(' + ')}\n`;
+    t += `             = ${W3.map(w => fc(w*w)).join(' + ')}\n`;
+    t += `             = <span class="result">${fc(s.l2W3Sum)}</span>\n\n`;
+
+    t += `Total: \\(\\sum_w w^2\\) = ${fc(s.l2W1Sum)} + ${fc(s.l2W2Sum)} + ${fc(s.l2W3Sum)} = <span class="result">${fc(s.l2Sum)}</span>\n\n`;
+
+    t += `─── Step B: multiply by λ to get the penalty ───\n\n`;
+    t += `  \\(\\lambda\\) = ${s.lambda}    (regularization strength, fixed hyperparameter)\n`;
+    t += `  \\(\\text{L2 penalty} = \\lambda \\sum_w w^2\\) = ${s.lambda} × ${fc(s.l2Sum)} = <span class="result">${fc(s.l2Pen)}</span>\n\n`;
+
+    t += `─── Step C: add to MSE to get the full loss ───\n\n`;
+    t += `  MSE        = ${f4(s.lossMSE)}     (from previous step)\n`;
+    t += `  L2 penalty = ${f4(s.l2Pen)}\n`;
+    t += `  ────────────────────\n`;
+    t += `  \\(L_{\\text{total}}\\)    = <span class="result">${f4(s.loss)}</span>\n\n`;
+
+    t += `─── What changes for backprop ───\n\n`;
+    t += `The penalty is a function of the weights, so it adds an\n`;
+    t += `extra term to every WEIGHT gradient (biases are unaffected):\n\n`;
+    t += `  \\(\\dfrac{\\partial L_{\\text{total}}}{\\partial w} = \\underbrace{\\dfrac{\\partial \\text{MSE}}{\\partial w}}_{\\text{MSE term (chain rule)}} + \\underbrace{2\\lambda w}_{\\text{L2 term}}\\)\n\n`;
+    t += `Derivation of the L2 term:\n`;
+    t += `  \\(\\dfrac{\\partial}{\\partial w}\\!\\left[\\lambda \\sum_k w_k^2\\right] = \\lambda \\cdot 2w = 2\\lambda w\\)\n\n`;
+    t += `So in the next 4 steps, every \\(\\partial L / \\partial W\\)\n`;
+    t += `gets a small "pull toward zero" added on top of the\n`;
+    t += `MSE gradient. The bigger the weight, the stronger\n`;
+    t += `the pull.`;
+    return t;
+  })(),
+  explain: `<p><strong>Why add a penalty?</strong> With only MSE, the network is allowed to grow weights as large as it needs to fit the training data perfectly — which usually means it <em>memorizes</em> the training set and generalizes poorly. <strong>L2 regularization</strong> (also called <em>weight decay</em> or <em>ridge</em> regression in the linear-model world) adds a soft constraint that says "small weights are preferred unless they really earn their keep."</p>
+<p><strong>Two competing forces:</strong> The MSE term pulls weights toward values that fit the data. The L2 term pulls all weights toward zero. At the optimum, every weight settles where the two forces balance — large enough to help with prediction, small enough that the extra fit doesn't outweigh the penalty.</p>
+<p><strong>For statisticians:</strong> This is exactly ridge regression's penalty, applied layer by layer. \\(\\lambda\\) plays the same role as the ridge tuning parameter — bigger \\(\\lambda\\) = more shrinkage = simpler (lower-variance, higher-bias) model.</p>
+<p><strong>For data analysts:</strong> Think of \\(\\lambda\\) as a complexity tax. Each weight costs \\(\\lambda w^2\\) "complexity dollars." A weight only stays large if it buys more loss reduction than it costs.</p>
+<p><strong>The choice of \\(\\lambda\\):</strong> Too small → no regularization, network may overfit. Too large → all weights shrink to zero, network can't learn. Typical values: <code>1e-4</code> to <code>1e-2</code>. We're using \\(\\lambda = ${s.lambda}\\) here for visual clarity in the calc above.</p>
+<p><strong>Why only weights?</strong> Biases shift the function up or down without changing its shape or capacity to overfit. Penalizing them would just impose an arbitrary preference for outputs near zero — usually not what you want. Standard practice in PyTorch, TensorFlow, and most textbooks is to regularize weights only.</p>
+<div class="key-insight"><strong>One line of code, big consequence:</strong> The next 4 backward steps look exactly the same as without L2 — they compute \\(\\partial \\text{MSE}/\\partial w\\) via chain rule — <em>except every weight gradient gets a \\(+2\\lambda w\\) term tacked on at the end</em>. Watch for it: each weight gradient panel will now show the MSE part, the L2 part, and the combined total used for the update.</div>`,
+  render(s) {
+    dimAll();
+    activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+    // Highlight all weights with the penalty colour
+    for (let i = 0; i < 3; i++) {
+      activateEdge(0, 0, i, 'flow-fwd');
+      activateEdge(2, i, 0, 'flow-fwd');
+      for (let j = 0; j < 3; j++) activateEdge(1, i, j, 'flow-fwd');
+    }
+    getEl('e-loss').className.baseVal = 'edge flow-fwd';
+    getEl('c-loss').setAttribute('stroke', 'var(--red)');
+    getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+    getEl('lbl-loss').textContent = 'L_total';
     getEl('val-loss').textContent = f4(s.loss);
   }
 },
@@ -1056,13 +1551,114 @@ L = (y_true - ŷ)²
 {
   phase: 'backward', title: 'What is Backpropagation?',
   formula: 'Goal: Find the gradient (sensitivity) of the loss with respect to every weight and bias in the network.',
-  calc: `THE PROBLEM:\n  We have 22 weights and biases. We know the prediction\n  was wrong (loss = ${f4(s.loss)}). But which weights are\n  to blame? And by how much should we change each one?\n\nTHE SOLUTION — BACKPROPAGATION:\n  Walk the error BACKWARDS through the network, layer\n  by layer, computing each weight's contribution to the\n  error along the way.\n\n  Loss  →  Output  →  Hidden 2  →  Hidden 1  →  Done!\n  ────     ──────     ────────     ────────     ────\n  Step 1   Step 2     Step 3       Step 4\n\nTHE TOOL — DERIVATIVES:\n  A derivative answers a simple question:\n    "If I tweak X by a tiny amount,\n     how much does Y change?"\n\n  We use derivatives because they tell us EXACTLY how\n  sensitive the loss is to each weight — that's the\n  number we need to know how to adjust each weight.\n\nTHE END RESULT:\n  A "sensitivity score" (gradient) for each of the\n  22 weights and biases. These numbers tell us\n  exactly how much, and in what direction, to nudge\n  each parameter to reduce the error.`,
-  explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights to blame for an error and by how much. It's the engine that makes learning possible.</p>
-<p><strong>For statisticians:</strong> Think of backpropagation as computing the <em>partial derivative of the loss with respect to each parameter</em> — but for a multi-layer model. In simple linear regression you have one β per predictor; here we have 22 weights spread across multiple layers, and we need a "marginal effect" for each one.</p>
-<p><strong>For data analysts:</strong> Think of it as a structured <em>sensitivity analysis</em>. We ask of every single weight: "If I changed you by a tiny amount, how much would the prediction error change?" The answer is that weight's gradient — its responsibility score for the current error.</p>
-<p><strong>Why derivatives?</strong> A derivative IS sensitivity. It's literally the answer to "how much does Y change when X changes by a little?" Since we want to <em>reduce</em> the loss, we need to know how each weight pushes the loss up or down — and that's exactly what a derivative gives us.</p>
-<p><strong>Why "back"-propagation?</strong> The error originates at the OUTPUT (where the prediction was wrong). To assign blame to weights deeper in the network, we have to trace the influence backwards — using the chain rule: if weight W affects neuron N, and neuron N affects the loss, then W's effect on loss = (W→N) × (N→loss). Multiply sensitivities along the chain.</p>
-<div class="key-insight"><strong>End result of the next 4 steps:</strong> A complete set of <strong>22 gradients</strong> — one per weight and bias. Each gradient tells us: (1) which direction to nudge that parameter (sign), and (2) how strongly (magnitude). The final "Update Weights" step uses these gradients to actually change the weights and improve the network.</div>`,
+  formulaCaption: '<strong>What it does:</strong> Sets up the 4-step backward walk. We need a "sensitivity score" for each of the 22 parameters telling us how to nudge it.',
+  calc: `THE PROBLEM:
+  We have 22 weights and biases. We know the prediction
+  was wrong (loss = ${f4(s.loss)}). But which weights are
+  to blame? And by how much should we change each one?
+
+THE BIG EQUATION (where all 22 parameters live):
+  Building from input forward, the network's prediction \\(\\hat{y}\\) is:
+
+    Layer 1  (3 weights + 3 biases = 6 parameters):
+      \\(z^{[1]}_1 = x \\cdot W^{[1]}_1 + b^{[1]}_1\\)
+      \\(z^{[1]}_2 = x \\cdot W^{[1]}_2 + b^{[1]}_2\\)
+      \\(z^{[1]}_3 = x \\cdot W^{[1]}_3 + b^{[1]}_3\\)
+      \\(a^{[1]}_i = \\max(0,\\, z^{[1]}_i)\\)            (ReLU — no params)
+
+    Layer 2  (9 weights + 3 biases = 12 parameters):
+      \\(z^{[2]}_1 = a^{[1]}_1 \\cdot W^{[2]}_{1,1} + a^{[1]}_2 \\cdot W^{[2]}_{2,1} + a^{[1]}_3 \\cdot W^{[2]}_{3,1} + b^{[2]}_1\\)
+      \\(z^{[2]}_2 = a^{[1]}_1 \\cdot W^{[2]}_{1,2} + a^{[1]}_2 \\cdot W^{[2]}_{2,2} + a^{[1]}_3 \\cdot W^{[2]}_{3,2} + b^{[2]}_2\\)
+      \\(z^{[2]}_3 = a^{[1]}_1 \\cdot W^{[2]}_{1,3} + a^{[1]}_2 \\cdot W^{[2]}_{2,3} + a^{[1]}_3 \\cdot W^{[2]}_{3,3} + b^{[2]}_3\\)
+      \\(a^{[2]}_j = \\max(0,\\, z^{[2]}_j)\\)            (ReLU — no params)
+
+    Output  (3 weights + 1 bias = 4 parameters):
+      \\(\\hat{y} = a^{[2]}_1 \\cdot W^{[3]}_1 + a^{[2]}_2 \\cdot W^{[3]}_2 + a^{[2]}_3 \\cdot W^{[3]}_3 + b^{[3]}\\)
+
+  And the loss is built on top:
+      \\(L = (y_{\\text{true}} - \\hat{y})^2\\)
+
+  If you substitute every \\(a^{[2]}\\), \\(a^{[1]}\\), \\(z^{[2]}\\), \\(z^{[1]}\\) back into \\(\\hat{y}\\),
+  you get ONE giant nested function — L is a function of these
+  22 variables (and nothing else, since x and \\(y_{\\text{true}}\\) are given):
+
+      \\(L = f(\\,W^{[1]}_1,\\; W^{[1]}_2,\\; W^{[1]}_3,\\)             ← 3 Layer 1 weights
+             \\(b^{[1]}_1,\\; b^{[1]}_2,\\; b^{[1]}_3,\\)             ← 3 Layer 1 biases
+             \\(W^{[2]}_{1,1},\\; W^{[2]}_{1,2},\\; W^{[2]}_{1,3},\\)     ← 9 Layer 2 weights
+             \\(W^{[2]}_{2,1},\\; W^{[2]}_{2,2},\\; W^{[2]}_{2,3},\\)
+             \\(W^{[2]}_{3,1},\\; W^{[2]}_{3,2},\\; W^{[2]}_{3,3},\\)
+             \\(b^{[2]}_1,\\; b^{[2]}_2,\\; b^{[2]}_3,\\)             ← 3 Layer 2 biases
+             \\(W^{[3]}_1,\\; W^{[3]}_2,\\; W^{[3]}_3,\\)             ← 3 output weights
+             \\(b^{[3]}\\,)\\)                          ← 1 output bias
+                                                ── total: 22
+
+  THE OPTIMIZATION:
+    Training a neural network = finding values for these 22
+    variables that MINIMIZE L.
+
+    Backpropagation tells us, for each one of those 22 variables,
+    "if you nudge me up a tiny bit, L will go ___ by ___." Then
+    Step 15 actually nudges each one downhill.
+
+THE SOLUTION — BACKPROPAGATION:
+  Walk the error BACKWARDS through the network, layer
+  by layer, computing each weight's contribution to the
+  error along the way.
+
+  Loss  →  Output  →  Hidden 2  →  Hidden 1  →  Done!
+  ────     ──────     ────────     ────────     ────
+  Step 1   Step 2     Step 3       Step 4
+
+THE TOOL — PARTIAL DERIVATIVES:
+  Notation: \\(\\partial L / \\partial w\\) means "partial derivative of L with
+  respect to w" — the slope of L when only w changes.
+  We pronounce \\(\\partial\\) as "partial dee" or "del".
+
+  Why "partial"? Because the loss L depends on MANY
+  variables at once (all 22 weights and biases). A
+  partial derivative asks: "if I nudge ONE of those
+  variables — say, w — by a tiny amount, while holding
+  all the others fixed, how much does L change?"
+
+  So we take ONE partial derivative per parameter —
+  one for every weight, one for every bias. Each one
+  measures: how does THIS specific weight/bias affect
+  the prediction error if we increase or decrease it?
+
+  Concrete example: if \\(y = x^2\\), then \\(dy/dx = 2x\\).
+    At \\(x = 3\\), slope is 6.
+    Nudge x by 0.01: y changes by ~0.06 (\\(= 2 \\cdot 3 \\cdot 0.01\\)).
+    Bigger x → steeper slope → bigger change in y.
+
+  We use partial derivatives because they tell us
+  EXACTLY how sensitive the loss is to each parameter
+  — that's the number we need to know how to adjust
+  each weight and each bias.
+
+THE END RESULT:
+  A "sensitivity score" (gradient) for each of the
+  22 weights and biases — 22 partial derivatives total.
+  Each tells us:
+    - sign  → which direction (increase or decrease)
+    - size  → how much (the magnitude of the nudge)
+  to reduce the error.`,
+  explain: `<p><strong>Backpropagation</strong> is how a neural network figures out which weights and biases to blame for an error — and by how much. It's the engine that makes learning possible.</p>
+<div class="key-insight" style="background:#eff6ff;border-left-color:#3b82f6;color:#1e3a8a;"><strong>💡 Heads up — backprop reuses every number from the forward pass.</strong> The next 4 steps don't invent any new values. They take the activations \\(a^{[1]}_i\\) and \\(a^{[2]}_j\\), pre-activations \\(z^{[1]}_i\\) and \\(z^{[2]}_j\\), weights \\(W^{[1]}, W^{[2]}, W^{[3]}\\), input \\(x\\), and prediction \\(\\hat{y}\\) — all already computed on the forward pass — and chain-rule them into per-parameter gradients.
+<br><br>
+If you ever lose track of where a number in a calculation came from, look at the top of the network diagram on any of the next 4 steps for two tabs:
+<br>
+&nbsp;&nbsp;<strong>📤 Backward · Gradient flow</strong> (default view — orange gradients flowing back through the network)
+<br>
+&nbsp;&nbsp;<strong>📥 Forward · Values used</strong> (companion view — the same diagram repaints to show every forward-pass value used by the current step)
+<br><br>
+Click the Forward tab whenever you want to trace a number back to its source — the visualization will highlight exactly which activations, weights, and biases are feeding into that step's calculations. Click Backward to return to the gradient view.</div>
+<p><strong>The loss is one giant function of 22 variables.</strong> If you mentally substitute the forward pass back into itself, our prediction \\(\\hat{y}\\) becomes a deeply nested expression involving <strong>all 22 parameters</strong>: the 15 weights and 7 biases. The loss \\(L = (y_{\\text{true}} - \\hat{y})^2\\) sits on top of that. So \\(L\\) is one function of 22 variables (with \\(x\\) and \\(y_{\\text{true}}\\) fixed as data) — and our goal during training is to find values for those 22 variables that <strong>minimize \\(L\\)</strong>. The calc block above lays the full equation out layer by layer.</p>
+<p><strong>Why partial derivatives?</strong> We're computing one partial derivative <em>per parameter</em> (per weight and per bias) so we can measure how <strong>that specific parameter</strong> affects the prediction error if we increase or decrease it by a tiny amount. The "partial" part just means: the loss depends on MANY variables at once (all 22 in our network), so when we take the derivative with respect to ONE of them, we treat the other 21 as fixed.</p>
+<p><strong>Per-parameter, not per-node.</strong> A single neuron usually has MULTIPLE parameters — one bias, plus one weight for each incoming connection. Each parameter gets its own partial derivative. For example, a Hidden Layer 2 neuron has 3 incoming weights + 1 bias = 4 partial derivatives associated with it.</p>
+<p><strong>For statisticians:</strong> Think of backpropagation as computing the <em>partial derivative of the loss with respect to each parameter</em> — but for a multi-layer model. In simple linear regression you have one β per predictor; here we have 22 parameters spread across multiple layers, and we need a "marginal effect" for each one.</p>
+<p><strong>For data analysts:</strong> Think of it as a structured <em>sensitivity analysis</em>. We ask of every single weight and bias: "If I changed you by a tiny amount, how much would the prediction error change?" The answer is that parameter's gradient — its responsibility score for the current error.</p>
+<p><strong>Why "back"-propagation?</strong> The error originates at the OUTPUT (where the prediction was wrong). To assign blame to weights deeper in the network, we have to trace the influence backwards — using the chain rule: if weight \\(W\\) affects neuron \\(N\\), and neuron \\(N\\) affects the loss, then \\(W\\)'s effect on loss \\(= (W \\to N) \\times (N \\to L)\\). Multiply sensitivities along the chain.</p>
+<div class="key-insight"><strong>End result of the next 4 steps:</strong> A complete set of <strong>22 partial derivatives</strong> — one per weight and one per bias. Each gradient tells us: (1) which direction to nudge that parameter (sign — should we increase or decrease it?), and (2) how strongly (magnitude — by how much?). The final "Update Weights" step uses these gradients to actually change the parameters and improve the network.</div>`,
   render(s) {
     dimAll();
     activateNode(3, 0, 'active-loss', 'L', f4(s.loss));
@@ -1077,7 +1673,8 @@ L = (y_true - ŷ)²
 // ── Loss Gradient ──
 {
   phase: 'backward', title: 'Backprop Start: Loss Gradient',
-  formula: '∂L/∂ŷ = -2(y_true - ŷ)',
+  formula: String.raw`$$\frac{\partial L}{\partial \hat{y}} = -2\,(y_{\text{true}} - \hat{y})`,
+  formulaCaption: '<strong>What it does:</strong> Computes how the loss changes if we nudge the prediction up or down — the starting signal for the entire backward pass.',
   ref: `<div class="ref-section">
     <div class="ref-label">y_true (target)</div>
     <div class="ref-value">${f4(s.yTrue)}</div>
@@ -1085,7 +1682,7 @@ L = (y_true - ŷ)²
   </div>
   <div class="ref-section">
     <div class="ref-label">ŷ (prediction)</div>
-    <div class="ref-value">${f3(s.yPred)}</div>
+    <div class="ref-value">${fc(s.yPred)}</div>
     <div class="ref-source">from Step 8: Output Layer (forward)</div>
   </div>
   <div class="ref-section">
@@ -1095,99 +1692,157 @@ L = (y_true - ŷ)²
   </div>
   <div class="ref-section">
     <div class="ref-label">Where used</div>
-    <div class="ref-value">∂L/∂ŷ = -2(y_true - ŷ)</div>
+    <div class="ref-value">\\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y})\\)</div>
   </div>`,
-  calc: `<div class="var-defs">Variable definitions:
-  ∂L/∂ŷ  = "sensitivity score" — how loss changes when ŷ changes
-  y_true = the target value (from data)
-  ŷ      = the network's prediction
-  -2     = comes from differentiating the squared loss (chain rule)</div>
-─── Calculation ───
-
-∂L/∂ŷ = -2 × (y_true - ŷ)
-      = -2 × (${f4(s.yTrue)} - ${f3(s.yPred)})
-      = -2 × (${f4(s.yTrue - s.yPred)})
-      = <span class="result">${f3(s.dLdy)}</span>
-
-${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!'}`,
-  explain: `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. It answers: "If I nudge this input by a tiny amount, how much does the output change?" Think of it like a <em>marginal effect</em> in statistics -- it tells you the rate of change.</p>
-<p>Here, ∂L/∂ŷ = <strong>${f3(s.dLdy)}</strong> means: for every 1-unit increase in our prediction ŷ, the loss changes by about ${f3(Math.abs(s.dLdy))} units. ${s.dLdy > 0 ? 'It\'s <strong>positive</strong>, so increasing ŷ makes things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'It\'s <strong>negative</strong>, so increasing ŷ actually reduces the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero -- our prediction is perfect!'}</p>
+  calc: vd('Variable definitions:', [
+    ['\\(\\partial L / \\partial \\hat{y}\\)', '"sensitivity score" — how loss changes when ŷ changes'],
+    ['\\(y_{\\text{true}}\\)', 'the target value (from data)'],
+    ['\\(\\hat{y}\\)',         'the network\'s prediction']
+  ], `Where does the -2 come from?\n  \\(L = (y_{\\text{true}} - \\hat{y})^2\\)\n  Power rule: \\(d/d\\hat{y}\\,[u^2] = 2u\\), where \\(u = (y_{\\text{true}} - \\hat{y})\\)\n  Inner derivative: \\(d/d\\hat{y}\\,(y_{\\text{true}} - \\hat{y}) = -1\\)\n  Multiply (chain rule): \\(2(y_{\\text{true}} - \\hat{y}) \\times (-1) = -2(y_{\\text{true}} - \\hat{y})\\)\nSo: the "2" comes from squaring; the "minus" comes from the inner derivative — ŷ is being SUBTRACTED in (y_true - ŷ).`)
++ `\n─── Calculation (one sample) ───\n\n`
++ `\\(\\partial L_{\\text{sample}} / \\partial \\hat{y} = -2 \\cdot (y_{\\text{true}} - \\hat{y})\\)\n`
++ `             = -2 × (${f4(s.yTrue)} - ${fc(s.yPred)})\n`
++ `             = -2 × (${f4(s.yTrue - s.yPred)})\n`
++ `             = <span class="result">${fc(s.dLdy)}</span>\n\n`
++ (s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it DOWN' : s.dLdy < 0 ? 'Negative gradient → prediction is TOO LOW → need to push it UP' : 'Zero gradient → prediction is perfect!')
++ `\n\nBatch note: with N samples and J outputs, the gradient is\n  \\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y}) / (N \\cdot J)\\)\nThe \\(/(N \\cdot J)\\) keeps gradient magnitude independent of batch size.\nOur companion Python code uses this batch form.`,
+  explain: compass(
+    'Compute ONE number — \\(\\partial L/\\partial \\hat{y}\\) — telling us how the loss changes if we nudge the prediction \\(\\hat{y}\\) up or down.',
+    'This is the <strong>seed of backpropagation</strong>. Every gradient for every weight and bias in the network is built by multiplying this single number through chain-rule steps. Without it, we can\'t start blaming any parameter.',
+    'This value flows into <strong>Step 14 (Output Layer Backprop)</strong>, where it combines with the Layer 2 activations and output weights to produce 4 more gradients (3 weight + 1 bias).'
+  ) + `<p><strong>What is a derivative, in plain English?</strong> A derivative is a <strong>sensitivity score</strong>. The symbol <strong>∂</strong> means "partial derivative" — the slope of L with respect to ŷ, holding everything else fixed. Think of it like a <em>marginal effect</em> in statistics — the rate of change.</p>
+<p>Here, ∂L/∂ŷ = <strong>${fc(s.dLdy)}</strong>. For a <em>tiny</em> nudge to ŷ, the loss changes proportionally to ${fc(Math.abs(s.dLdy))}. (Larger jumps overshoot because the loss is curved, not straight.) ${s.dLdy > 0 ? 'The gradient is <strong>positive</strong>, so increasing ŷ would make things worse. We need to push ŷ <strong>down</strong>.' : s.dLdy < 0 ? 'The gradient is <strong>negative</strong>, so increasing ŷ would actually reduce the loss. We need to push ŷ <strong>up</strong>.' : 'It\'s zero — our prediction is perfect!'}</p>
 <p><strong>Why do we care?</strong> This single number launches the entire backward pass. It's the starting signal that will flow through every layer, telling each weight: "Here's how much you personally contributed to the error, and which direction to change."</p>
-<div class="key-insight"><strong>🏔️ Mountain analogy:</strong> Remember the fog? You can't see the whole landscape, but you <em>can</em> feel the slope under your feet -- that's exactly what this derivative is. Positive slope (${f3(s.dLdy)} ${s.dLdy > 0 ? '> 0' : s.dLdy < 0 ? '< 0' : '= 0'})? ${s.dLdy > 0 ? 'You\'re going uphill -- turn around.' : s.dLdy < 0 ? 'You\'re heading downhill -- keep going.' : 'Flat ground -- you might be at the bottom!'} Backpropagation (next steps) will feel the slope for <strong>every weight simultaneously</strong> -- like having 22 altimeters, one per parameter.</div>`,
+<div class="key-insight"><strong>🏔️ Mountain analogy:</strong> Remember the fog? You can't see the whole landscape, but you <em>can</em> feel the slope under your feet -- that's exactly what this derivative is. Positive slope (${fc(s.dLdy)} ${s.dLdy > 0 ? '> 0' : s.dLdy < 0 ? '< 0' : '= 0'})? ${s.dLdy > 0 ? 'You\'re going uphill -- turn around.' : s.dLdy < 0 ? 'You\'re heading downhill -- keep going.' : 'Flat ground -- you might be at the bottom!'} Backpropagation (next steps) will feel the slope for <strong>every weight simultaneously</strong> -- like having 22 altimeters, one per parameter.</div>`,
   render(s) {
     dimAll();
-    activateNode(3, 0, 'active-bwd', 'ŷ', f3(s.yPred));
+    activateNode(3, 0, 'active-bwd', 'ŷ', fc(s.yPred));
     getEl('e-loss').className.baseVal = 'edge flow-bwd';
     getEl('c-loss').setAttribute('stroke', 'var(--red)');
     getEl('c-loss').setAttribute('fill', 'var(--red-light)');
     getEl('lbl-loss').textContent = '∂L';
-    getEl('val-loss').textContent = f3(s.dLdy);
+    getEl('val-loss').textContent = fc(s.dLdy);
   }
 },
 
 // ── Backprop Output Layer ──
 {
   phase: 'backward', title: 'Backprop: Output Layer (Dense 3)',
-  formula: '∂L/∂w_i = a_i × ∂L/∂ŷ\n∂L/∂b = ∂L/∂ŷ\n∂L/∂a_i = w_i × ∂L/∂ŷ',
+  formula: String.raw`$$\frac{\partial L}{\partial W^{[3]}_i} = \underbrace{a^{[2]}_i \cdot \frac{\partial L}{\partial \hat{y}}}_{\text{MSE}} + \underbrace{2\lambda W^{[3]}_i}_{\text{L2}} \quad\quad \frac{\partial L}{\partial b^{[3]}} = \frac{\partial L}{\partial \hat{y}} \quad\quad \frac{\partial L}{\partial a^{[2]}_i} = W^{[3]}_i \cdot \frac{\partial L}{\partial \hat{y}}`,
+  formulaCaption: '<strong>What it does:</strong> Computes gradients for the output layer\'s 3 weights (MSE + L2 penalty) and 1 bias (no L2), then passes a gradient back to Layer 2 so it can do the same.',
   ref: `<div class="ref-section">
-    <div class="ref-label">Layer 2 activations (a_i)</div>
-    <div class="ref-value">a_1 = ${fc(s.A2[0])}\na_2 = ${fc(s.A2[1])}\na_3 = ${fc(s.A2[2])}</div>
+    <div class="ref-label">Layer 2 activations (a^[2]_i)</div>
+    <div class="ref-value">\\(a^{[2]}_1\\) = ${fc(s.A2[0])}\n\\(a^{[2]}_2\\) = ${fc(s.A2[1])}\n\\(a^{[2]}_3\\) = ${fc(s.A2[2])}</div>
     <div class="ref-source">from Step 7: Hidden Layer 2 ReLU (forward)</div>
   </div>
   <div class="ref-section">
-    <div class="ref-label">Output weights (w_i)</div>
-    <div class="ref-value">w_1 = ${fw(W3[0])}\nw_2 = ${fw(W3[1])}\nw_3 = ${fw(W3[2])}</div>
+    <div class="ref-label">Output weights (W^[3]_i)</div>
+    <div class="ref-value">\\(W^{[3]}_1\\) = ${fw(W3[0])}\n\\(W^{[3]}_2\\) = ${fw(W3[1])}\n\\(W^{[3]}_3\\) = ${fw(W3[2])}</div>
     <div class="ref-source">network parameters (initialized at start)</div>
   </div>
   <div class="ref-section">
     <div class="ref-label">Incoming gradient</div>
-    <div class="ref-value">∂L/∂ŷ = ${f3(s.dLdy)}</div>
+    <div class="ref-value">\\(\\partial L / \\partial \\hat{y}\\) = ${fc(s.dLdy)}</div>
     <div class="ref-source">from Step 11: Loss Gradient (backward)</div>
   </div>
   <div class="ref-section">
     <div class="ref-label">Where used in formulas</div>
-    <div class="ref-value">∂L/∂w_i = <strong>a_i</strong> × ∂L/∂ŷ\n∂L/∂a_i = <strong>w_i</strong> × ∂L/∂ŷ</div>
+    <div class="ref-value">\\(\\partial L / \\partial W^{[3]}_i = a^{[2]}_i \\cdot \\partial L / \\partial \\hat{y}\\)\n\\(\\partial L / \\partial a^{[2]}_i = W^{[3]}_i \\cdot \\partial L / \\partial \\hat{y}\\)</div>
   </div>`,
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  a_i    = activation from Layer 2 neuron i\n`;
-    t += `  w_i    = output layer weight from Layer 2 neuron i → output\n`;
-    t += `  b      = output layer bias\n`;
-    t += `  ∂L/∂ŷ  = incoming gradient from previous step (loss gradient)\n`;
-    t += `  ∂L/∂w_i = sensitivity of loss to weight w_i (what we're computing)\n`;
-    t += `  ∂L/∂a_i = sensitivity passed BACK to Layer 2 (for next step)</div>\n`;
-    t += `Incoming gradient: ∂L/∂ŷ = ${f3(s.dLdy)}\n`;
-    t += `(Linear backward: gradient passes through unchanged)\n\n`;
-    t += `Layer 2 activations (a_i) used in weight gradients:\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(a^{[2]}_i\\)',                       'activation from Layer 2 neuron i (ReLU output)'],
+      ['\\(W^{[3]}_i\\)',                       'output layer weight from \\(a^{[2]}_i\\) → output'],
+      ['\\(b^{[3]}\\)',                         'output layer bias (single scalar)'],
+      ['\\(\\partial L / \\partial \\hat{y}\\)', 'incoming gradient from previous step (loss gradient)'],
+      ['\\(\\partial L / \\partial W^{[3]}_i\\)', 'sensitivity of loss to weight \\(W^{[3]}_i\\) (produced this step)'],
+      ['\\(\\partial L / \\partial a^{[2]}_i\\)', 'gradient passed BACK to Layer 2 (for next step)']
+    ]) + `\n`;
+    t += `Incoming gradient: \\(\\partial L / \\partial \\hat{y}\\) = ${fc(s.dLdy)}\n\n`;
+    t += `Linear activation backward — derive WHY it passes through:\n`;
+    t += `  Forward: \\(\\hat{y} = f(z^{[3]}) = z^{[3]}\\)   (identity function)\n`;
+    t += `  Derivative: \\(df/dz = 1\\)\n`;
+    t += `  Chain rule: \\(\\partial L / \\partial z^{[3]} = \\partial L / \\partial \\hat{y} \\times df/dz = \\partial L / \\partial \\hat{y} \\times 1 = \\partial L / \\partial \\hat{y}\\)\n`;
+    t += `  → The gradient passes through unchanged.\n\n`;
+    t += `Layer 2 activations \\(a^{[2]}_i\\) used in weight gradients:\n`;
     for (let i = 0; i < 3; i++) {
       const aliveA = s.A2[i] > 0;
       const cls = aliveA ? 'alive' : 'dead';
       const tag = aliveA ? '✓ ALIVE' : '✗ DEAD (killed by ReLU — w gradient = 0)';
-      t += `  <span class="${cls}">a_${i+1} = ${fc(s.A2[i])}  ${tag}</span>\n`;
+      t += `  <span class="${cls}">\\(a^{[2]}_${i+1}\\) = ${fc(s.A2[i])}  ${tag}</span>\n`;
     }
-    t += `\nWeight gradients (∂L/∂w_i = a_i × ∂L/∂ŷ):\n`;
+    t += `\nWeight gradients — MSE part (\\(a^{[2]}_i \\cdot \\partial L / \\partial \\hat{y}\\)):\n`;
     for (let i = 0; i < 3; i++) {
       const cls = s.A2[i] > 0 ? 'alive' : 'dead';
-      t += `  <span class="${cls}">∂L/∂w${i+1} = a_${i+1} × ∂L/∂ŷ = ${fc(s.A2[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dW3[i])}</span></span>\n`;
+      t += `  <span class="${cls}">MSE\\(_${i+1}\\) = ${fc(s.A2[i])} × ${fc(s.dLdy)} = ${fc(s.dW3data[i])}</span>\n`;
     }
-    t += `\nBias gradient:\n  ∂L/∂b = <span class="result">${fc(s.db3g)}</span>\n`;
-    t += `\nGradient passed to Layer 2 (∂L/∂a_i = w_i × ∂L/∂ŷ):\n`;
+    t += `\nL2 penalty part (\\(2\\lambda W^{[3]}_i\\), with \\(\\lambda\\) = ${s.lambda}):\n`;
+    for (let i = 0; i < 3; i++) {
+      t += `  L2\\(_${i+1}\\) = 2 × ${s.lambda} × ${fw(W3[i])} = ${fc(s.dW3L2[i])}\n`;
+    }
+    t += `\nTotal weight gradients (MSE + L2):\n`;
+    for (let i = 0; i < 3; i++) {
+      const cls = s.A2[i] > 0 ? 'alive' : 'dead';
+      t += `  <span class="${cls}">\\(\\partial L / \\partial W^{[3]}_${i+1}\\) = ${fc(s.dW3data[i])} + ${fc(s.dW3L2[i])} = <span class="result">${fc(s.dW3[i])}</span></span>\n`;
+    }
+    // ── Show how these terminal gradients feed into Step 17's update ──
+    t += `\n─── Where these 3 gradients go next ───\n\n`;
+    t += `These values are TERMINAL — they don't feed into Steps 15 or 16.\n`;
+    t += `They'll be used in Step 17 (Weight & Bias Update) to actually\n`;
+    t += `change the output-layer weights \\(W^{[3]}\\).\n\n`;
+    t += `Update formula (applied in Step 17):\n`;
+    t += `  \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\dfrac{\\partial L}{\\partial W}\\)   with \\(\\eta\\) = ${LR} (learning rate)\n\n`;
+    t += `Working through each output weight, step by step:\n\n`;
+    for (let i = 0; i < 3; i++) {
+      const grad   = s.dW3[i];
+      const prod   = LR * grad;            // = η · ∂L/∂W
+      const wOld   = W3[i];
+      const wNew   = s.W3n[i];             // = wOld − prod
+      const negProd = -prod;               // the "nudge" applied to W
+      const signStr = negProd >= 0 ? '+' : '−';
+      const absNeg  = Math.abs(negProd);
+      t += `  \\(W^{[3]}_${i+1}\\):  ${fw(wOld)} − (${LR} × ${fc(grad)})\n`;
+      t += `          = ${fw(wOld)} − (${fc(prod)})\n`;
+      t += `          = ${fw(wOld)} ${signStr} ${fc(absNeg)}\n`;
+      t += `          = <span class="result">${fc(wNew)}</span>   ← new \\(W^{[3]}_${i+1}\\)\n\n`;
+    }
+    t += `Notice the "double negative" in each line: when \\(\\partial L/\\partial W\\)\n`;
+    t += `is negative, the rule's minus sign + the gradient's minus sign\n`;
+    t += `combine to INCREASE \\(W\\). All three output weights grow this round,\n`;
+    t += `pushing \\(\\hat{y}\\) upward toward \\(y_{\\text{true}}\\) (= ${f4(s.yTrue)}) — exactly\n`;
+    t += `what we want, since the network underpredicted (\\(\\hat{y}\\) = ${fc(s.yPred)}).\n`;
+    t += `\nBias gradient (\\(\\partial L / \\partial b^{[3]} = \\partial L / \\partial \\hat{y}\\) — bias coefficient is 1):\n`;
+    t += `  \\(\\partial L / \\partial b^{[3]}\\) = <span class="result">${fc(s.db3g)}</span>\n`;
+    // Preview of the bias update applied in Step 17
+    {
+      const grad = s.db3g;
+      const prod = LR * grad;
+      t += `\n  Where it goes next (Step 17 update for the output bias):\n`;
+      t += `    \\(b^{[3]}\\):  ${fw(b3)} − (${LR} × ${fc(grad)}) = ${fw(b3)} − (${fc(prod)}) = <span class="result">${fc(s.b3n)}</span>   ← new \\(b^{[3]}\\)\n`;
+    }
+    t += `\nGradient passed back to Layer 2 (\\(\\partial L / \\partial a^{[2]}_i = W^{[3]}_i \\cdot \\partial L / \\partial \\hat{y}\\)):\n`;
     for (let i = 0; i < 3; i++)
-      t += `  ∂L/∂a${i+1} = ${fw(W3[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dA2[i])}</span>\n`;
+      t += `  \\(\\partial L / \\partial a^{[2]}_${i+1}\\) = ${fw(W3[i])} × ${fc(s.dLdy)} = <span class="result">${fc(s.dA2[i])}</span>\n`;
+    t += `\nNote: with K output neurons, ∂L/∂a^[2]_i = Σ_k W^[3]_ik × ∂L/∂z^[3]_k\n`;
+    t += `(sum over outputs). Our output is 1-D so the sum collapses to one term.`;
     return t;
   })(),
-  explain: `<p><strong>Tracing blame backward.</strong> We know the overall error. Now the question is: which weights at this layer are most responsible?</p>
+  explain: compass(
+    '<strong>4 terminal gradients</strong> for this layer\'s parameters (3 weight + 1 bias) — sensitivity scores for each of the 4 output-layer parameters. Plus <strong>3 "pass-back" gradients</strong> \\(\\partial L/\\partial a^{[2]}_i\\) — not used for updates, but needed to start the next layer\'s backprop.',
+    'The output weights and bias <em>directly</em> produced the wrong prediction, so each one gets its own sensitivity score telling the optimizer how to adjust it. We also have to send a "blame signal" backward to Layer 2 so it can do the same calculation.',
+    '<strong>The 4 terminal gradients → Step 17</strong> (Weight Update), where each gets plugged into \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\). <strong>The 3 pass-back gradients → Step 15</strong>, where ReLU gates them and Dense 2 backprop continues.'
+  ) + `<p><strong>Tracing blame backward.</strong> We know the overall error. Now the question is: which weights at this layer are most responsible?</p>
 <p><strong>∂L/∂W₃ (weight sensitivity)</strong> -- "How much does each weight contribute to the error?" This is like computing the <em>variable importance</em> for each connection. A weight connected to a highly active neuron gets a large gradient because it had a big influence on the prediction.</p>
 <p><strong>∂L/∂b₃ (bias sensitivity)</strong> -- "How much does the bias contribute?" The bias shifts the entire output, so its gradient equals the incoming signal directly.</p>
 <p><strong>∂L/∂A₂ (passed backward)</strong> -- "How much did each Layer 2 neuron contribute to the error?" These gradients get sent to the previous layer so it can do the same analysis. Think of it as <em>passing the blame upstream</em>.</p>
-<div class="key-insight"><strong>Dead neuron = zero influence:</strong> Neuron 2 in Layer 2 output a₂ = 0 (killed by ReLU). Its weight gradient is 0 x ${f3(s.dLdy)} = 0. In data science terms, this is like a variable with <strong>zero variance</strong> -- it can't explain anything, so its coefficient can't be updated. The weight <strong>won't change</strong> this round.</div>`,
+<div class="key-insight"><strong>Dead neuron = zero influence:</strong> Neuron 2 in Layer 2 output a₂ = 0 (killed by ReLU). Its weight gradient is 0 x ${fc(s.dLdy)} = 0. In data science terms, this is like a variable with <strong>zero variance</strong> -- it can't explain anything, so its coefficient can't be updated. The weight <strong>won't change</strong> this round.</div>`,
   render(s) {
     dimAll();
-    activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', f3(s.dLdy));
+    activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', fc(s.dLdy));
     for (let i = 0; i < 3; i++) {
-      activateNode(2, i, 'active-bwd', '∂L/∂a', f3(s.dA2[i]));
+      activateNode(2, i, 'active-bwd', '∂L/∂a', fc(s.dA2[i]));
       activateEdge(2, i, 0, 'flow-bwd');
-      showWeight(2, i, 0, '∂w='+f3(s.dW3[i]));
+      showWeight(2, i, 0, '∂L/∂W^[3]_'+(i+1)+'='+fc(s.dW3[i]));
     }
   }
 },
@@ -1195,66 +1850,103 @@ ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it
 // ── Backprop ReLU 2 + Dense 2 ──
 {
   phase: 'backward', title: 'Backprop: Through ReLU 2 & Dense Layer 2',
-  formula: 'ReLU: ∂L/∂z = ∂L/∂a × (1 if z>0, else 0)\nDense: ∂L/∂w_ij = a_i × ∂L/∂z_j',
+  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[2]}_j} = \tfrac{\partial L}{\partial a^{[2]}_j} \cdot \mathbb{1}\!\left[z^{[2]}_j > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[2]}_{ij}} = \underbrace{a^{[1]}_i \cdot \tfrac{\partial L}{\partial z^{[2]}_j}}_{\text{MSE}} + \underbrace{2\lambda W^{[2]}_{ij}}_{\text{L2}} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[2]}_j} = \tfrac{\partial L}{\partial z^{[2]}_j} \\ \text{Input:}\quad & \tfrac{\partial L}{\partial a^{[1]}_i} = \textstyle\sum_j W^{[2]}_{ij} \cdot \tfrac{\partial L}{\partial z^{[2]}_j} \end{aligned}`,
+  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 2 (dead neurons block flow), then produces gradients for Layer 2\'s 9 weights (MSE + L2) + 3 biases (no L2), and passes a gradient back to Layer 1.',
   ref: `<div class="ref-section">
-    <div class="ref-label">Layer 2 pre-activations (z)</div>
-    <div class="ref-value">z_1 = ${fc(s.Z2[0])}\nz_2 = ${fc(s.Z2[1])}\nz_3 = ${fc(s.Z2[2])}</div>
+    <div class="ref-label">Layer 2 pre-activations (z^[2])</div>
+    <div class="ref-value">\\(z^{[2]}_1\\) = ${fc(s.Z2[0])}\n\\(z^{[2]}_2\\) = ${fc(s.Z2[1])}\n\\(z^{[2]}_3\\) = ${fc(s.Z2[2])}</div>
     <div class="ref-source">from Step 6: Hidden Layer 2 Weighted Sum (forward) — used to gate ReLU</div>
   </div>
   <div class="ref-section">
-    <div class="ref-label">Layer 1 activations (a_i)</div>
-    <div class="ref-value">a_1 = ${fc(s.A1[0])}\na_2 = ${fc(s.A1[1])}\na_3 = ${fc(s.A1[2])}</div>
+    <div class="ref-label">Layer 1 activations (a^[1]_i)</div>
+    <div class="ref-value">\\(a^{[1]}_1\\) = ${fc(s.A1[0])}\n\\(a^{[1]}_2\\) = ${fc(s.A1[1])}\n\\(a^{[1]}_3\\) = ${fc(s.A1[2])}</div>
     <div class="ref-source">from Step 5: Hidden Layer 1 ReLU (forward)</div>
   </div>
   <div class="ref-section">
-    <div class="ref-label">Incoming gradients ∂L/∂a (Layer 2)</div>
-    <div class="ref-value">∂L/∂a_1 = ${fc(s.dA2[0])}\n∂L/∂a_2 = ${fc(s.dA2[1])}\n∂L/∂a_3 = ${fc(s.dA2[2])}</div>
+    <div class="ref-label">Incoming gradients ∂L/∂a^[2] (Layer 2)</div>
+    <div class="ref-value">\\(\\partial L / \\partial a^{[2]}_1\\) = ${fc(s.dA2[0])}\n\\(\\partial L / \\partial a^{[2]}_2\\) = ${fc(s.dA2[1])}\n\\(\\partial L / \\partial a^{[2]}_3\\) = ${fc(s.dA2[2])}</div>
     <div class="ref-source">from Step 12: Output Layer Backward</div>
   </div>
   <div class="ref-section">
     <div class="ref-label">Where used in formulas</div>
-    <div class="ref-value">ReLU gate uses <strong>z</strong> (alive if z>0)\nWeight grad uses <strong>a_i</strong> (Layer 1 outputs)</div>
+    <div class="ref-value">ReLU gate uses <strong>\\(z^{[2]}\\)</strong> (alive if z > 0)\nWeight grad uses <strong>\\(a^{[1]}_i\\)</strong> (Layer 1 outputs)</div>
   </div>`,
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  z_j     = pre-activation from forward pass (used to gate ReLU)\n`;
-    t += `  a_i     = activation from Layer 1 (used for weight gradients)\n`;
-    t += `  W2[i][j]= weight from Layer 1 neuron i → Layer 2 neuron j\n`;
-    t += `  ∂L/∂a_j = incoming gradient (for Layer 2 activations)\n`;
-    t += `  ∂L/∂z_j = gradient AFTER ReLU gate (next step uses this)\n`;
-    t += `  ∂L/∂w_ij= sensitivity of loss to weight W2[i][j] (output)</div>\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(z^{[2]}_j\\)',                          'Layer 2 pre-activation from forward pass (gates ReLU)'],
+      ['\\(a^{[1]}_i\\)',                          'activation from Layer 1 (used for weight gradients)'],
+      ['\\(W^{[2]}_{ij}\\)',                       'weight from Layer 1 neuron i → Layer 2 neuron j'],
+      ['\\(b^{[2]}_j\\)',                          'Layer 2 bias for neuron j'],
+      ['\\(\\partial L / \\partial a^{[2]}_j\\)',  'incoming gradient (for Layer 2 activations)'],
+      ['\\(\\partial L / \\partial z^{[2]}_j\\)',  'gradient AFTER ReLU gate (next step uses this)'],
+      ['\\(\\partial L / \\partial W^{[2]}_{ij}\\)', 'sensitivity of loss to weight \\(W^{[2]}_{ij}\\) (produced this step)'],
+      ['\\(\\partial L / \\partial b^{[2]}_j\\)',  'sensitivity of loss to bias \\(b^{[2]}_j\\) (produced this step)'],
+      ['\\(\\partial L / \\partial a^{[1]}_i\\)',  'gradient passed BACK to Layer 1 (for next step)']
+    ]) + `\n`;
     t += `ReLU 2 backward (gate gradients through):\n`;
     for (let j = 0; j < 3; j++) {
       const alive = s.Z2[j] > 0;
       const cls = alive ? 'alive' : 'dead';
-      t += `  <span class="${cls}">∂L/∂z${j+1}: z=${fc(s.Z2[j])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ2[j])}</span>\n`;
+      t += `  <span class="${cls}">\\(\\partial L / \\partial z^{[2]}_${j+1}\\): z=${fc(s.Z2[j])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ2[j])}</span>\n`;
     }
-    t += `\nDense 2 weight gradients (∂L/∂w_ij = a_i × ∂L/∂z_j):\n`;
-    t += `where a_i = activation from Layer 1 (forward pass)\n\n`;
+    t += `\nDense 2 weight gradients — full formula: \\(\\partial L / \\partial W^{[2]}_{ij} = a^{[1]}_i \\cdot \\partial L / \\partial z^{[2]}_j + 2\\lambda W^{[2]}_{ij}\\)\n`;
+    t += `where \\(a^{[1]}_i\\) = activation from Layer 1, \\(\\lambda\\) = ${s.lambda}\n\n`;
     for (let i = 0; i < 3; i++) {
       const aliveA = s.A1[i] > 0;
       const tag = aliveA
-        ? `a_${i+1} = ${fc(s.A1[i])}  ✓ ALIVE`
-        : `a_${i+1} = 0.0000  ✗ DEAD (killed by ReLU — all w[${i}][·] gradients = 0)`;
+        ? `\\(a^{[1]}_${i+1}\\) = ${fc(s.A1[i])}  ✓ ALIVE`
+        : `\\(a^{[1]}_${i+1}\\) = 0.00  ✗ DEAD (kills MSE part — only L2 term remains)`;
       const cls = aliveA ? 'alive' : 'dead';
       t += `<span class="${cls}">─── Layer 1 neuron ${i+1}:  ${tag} ───</span>\n`;
       for (let j = 0; j < 3; j++) {
-        t += `  ∂L/∂w[${i}][${j}] = a_${i+1} × ∂L/∂z_${j+1} = ${fc(s.A1[i])} × ${fc(s.dZ2[j])} = ${fc(s.dW2[i][j])}\n`;
+        t += `  \\(\\partial L / \\partial W^{[2]}_{${i+1},${j+1}}\\) = ${fc(s.A1[i])}×${fc(s.dZ2[j])} + 2×${s.lambda}×${fw(W2[i][j])}  =  ${fc(s.dW2data[i][j])} + ${fc(s.dW2L2[i][j])} = <span class="result">${fc(s.dW2[i][j])}</span>\n`;
       }
       t += `\n`;
     }
-    t += `\nGradient passed to Layer 1 (chain rule through W2):\n`;
-    t += `Formula: ∂L/∂a_i = Σ_j (W2[i][j] × ∂L/∂z_j)\n`;
+    // Preview the 9 W^[2] updates Step 17 will apply with these gradients
+    t += `\n  Where these 9 weight gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(W^{[2]}_{i,j,\\text{new}} = W^{[2]}_{i,j,\\text{old}} - \\eta \\cdot \\partial L / \\partial W^{[2]}_{i,j}\\)  with \\(\\eta\\) = ${LR}\n`;
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        const grad = s.dW2[i][j];
+        const prod = LR * grad;
+        const wOld = W2[i][j];
+        const wNew = s.W2n[i][j];
+        t += `    \\(W^{[2]}_{${i+1},${j+1}}\\):  ${fw(wOld)} − (${LR} × ${fc(grad)}) = ${fw(wOld)} − (${fc(prod)}) = <span class="result">${fc(wNew)}</span>\n`;
+      }
+      if (i < 2) t += `\n`;
+    }
+    t += `\nDense 2 bias gradients (\\(\\partial L / \\partial b^{[2]}_j = \\partial L / \\partial z^{[2]}_j\\) — bias coefficient is 1):\n`;
+    for (let j = 0; j < 3; j++) {
+      const cls = s.Z2[j] > 0 ? 'alive' : 'dead';
+      t += `  <span class="${cls}">\\(\\partial L / \\partial b^{[2]}_${j+1}\\) = <span class="result">${fc(s.dZ2[j])}</span></span>\n`;
+    }
+    // Preview the 3 b^[2] updates Step 17 will apply
+    t += `\n  Where these 3 bias gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(b^{[2]}_{j,\\text{new}} = b^{[2]}_{j,\\text{old}} - \\eta \\cdot \\partial L / \\partial b^{[2]}_j\\)\n`;
+    for (let j = 0; j < 3; j++) {
+      const grad = s.db2g[j];
+      const prod = LR * grad;
+      const bOld = b2[j];
+      const bNew = s.b2n[j];
+      t += `    \\(b^{[2]}_${j+1}\\):  ${fw(bOld)} − (${LR} × ${fc(grad)}) = ${fw(bOld)} − (${fc(prod)}) = <span class="result">${fc(bNew)}</span>\n`;
+    }
+    t += `\nGradient passed back to Layer 1 (chain rule through \\(W^{[2]}\\)):\n`;
+    t += `Formula: \\(\\partial L / \\partial a^{[1]}_i = \\sum_j W^{[2]}_{ij} \\cdot \\partial L / \\partial z^{[2]}_j\\)\n`;
     t += `(Each Layer 1 neuron's gradient = sum of its outgoing\n`;
     t += ` weights times the gradients flowing back from Layer 2.)\n\n`;
     for (let i = 0; i < 3; i++) {
-      t += `  ∂L/∂a${i+1} = (${fw(W2[i][0])} × ${fc(s.dZ2[0])}) + (${fw(W2[i][1])} × ${fc(s.dZ2[1])}) + (${fw(W2[i][2])} × ${fc(s.dZ2[2])})\n`;
-      t += `        = ${fc(W2[i][0]*s.dZ2[0])} + ${fc(W2[i][1]*s.dZ2[1])} + ${fc(W2[i][2]*s.dZ2[2])}\n`;
-      t += `        = <span class="result">${fc(s.dA1[i])}</span>\n\n`;
+      t += `  \\(\\partial L / \\partial a^{[1]}_${i+1}\\) = (${fw(W2[i][0])} × ${fc(s.dZ2[0])}) + (${fw(W2[i][1])} × ${fc(s.dZ2[1])}) + (${fw(W2[i][2])} × ${fc(s.dZ2[2])})\n`;
+      t += `              = ${fc(W2[i][0]*s.dZ2[0])} + ${fc(W2[i][1]*s.dZ2[1])} + ${fc(W2[i][2]*s.dZ2[2])}\n`;
+      t += `              = <span class="result">${fc(s.dA1[i])}</span>\n\n`;
     }
     return t;
   })(),
-  explain: `<p><strong>ReLU backward = a yes/no gate.</strong> Remember, ReLU zeroed out negative values on the forward pass. Now it does the same to gradients: if a neuron was active (z &gt; 0), the gradient flows through. If it was dead (z &le; 0), the gradient is <strong>blocked completely</strong>.</p>
+  explain: compass(
+    '<strong>12 terminal gradients</strong> for Layer 2\'s parameters (9 weight + 3 bias) — one sensitivity score per parameter. Plus <strong>3 pass-back gradients</strong> \\(\\partial L/\\partial a^{[1]}_i\\) — the signal Layer 1 needs to continue backprop. Also: ReLU 2 gates the incoming gradients (kills them for dead neurons).',
+    'Each of Layer 2\'s 12 parameters contributed (through chain rule) to the prediction error. We need an individual "blame score" for each so Step 17 knows how to nudge it. ReLU 2 gating prevents dead neurons from sending bogus signals backward.',
+    '<strong>The 12 terminal gradients → Step 17</strong> (Weight Update) — they become per-parameter update directions. <strong>The 3 pass-back gradients → Step 16</strong>, the final backprop step for Layer 1.'
+  ) + `<p><strong>ReLU backward = a yes/no gate.</strong> Remember, ReLU zeroed out negative values on the forward pass. Now it does the same to gradients: if a neuron was active (z &gt; 0), the gradient flows through. If it was dead (z &le; 0), the gradient is <strong>blocked completely</strong>.</p>
 <p><strong>In data science terms:</strong> A blocked gradient means "changing this weight would have <em>no effect whatsoever</em> on the prediction." It's like a feature that was dropped from your model -- it contributes nothing right now, so there's nothing to optimize.</p>
 <p><strong>Dense 2 backward</strong> then computes the weight gradients (sensitivity of each weight to the error) and passes blame further back to Layer 1.</p>
 <p>Gradients reaching Layer 1: <strong>[${s.dA1.map(d=>fc(d)).join(', ')}]</strong></p>
@@ -1279,10 +1971,11 @@ ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it
 // ── Backprop ReLU 1 + Dense 1 ──
 {
   phase: 'backward', title: 'Backprop: Through ReLU 1 & Dense Layer 1',
-  formula: 'ReLU: gate by z>0\nDense: ∂L/∂w = x × ∂L/∂z',
+  formula: String.raw`$$\begin{aligned} \text{ReLU:}\quad & \tfrac{\partial L}{\partial z^{[1]}_i} = \tfrac{\partial L}{\partial a^{[1]}_i} \cdot \mathbb{1}\!\left[z^{[1]}_i > 0\right] \\ \text{Weight:}\quad & \tfrac{\partial L}{\partial W^{[1]}_i} = \underbrace{x \cdot \tfrac{\partial L}{\partial z^{[1]}_i}}_{\text{MSE}} + \underbrace{2\lambda W^{[1]}_i}_{\text{L2}} \\ \text{Bias:}\quad & \tfrac{\partial L}{\partial b^{[1]}_i} = \tfrac{\partial L}{\partial z^{[1]}_i} \end{aligned}`,
+  formulaCaption: '<strong>What it does:</strong> Gates gradients through ReLU 1, then produces the final 6 parameter gradients (Layer 1\'s 3 weights — MSE + L2 — and 3 biases). All 22 gradients are now ready for the update step.',
   ref: `<div class="ref-section">
-    <div class="ref-label">Layer 1 pre-activations (z)</div>
-    <div class="ref-value">z_1 = ${fc(s.Z1[0])}\nz_2 = ${fc(s.Z1[1])}\nz_3 = ${fc(s.Z1[2])}</div>
+    <div class="ref-label">Layer 1 pre-activations (z^[1])</div>
+    <div class="ref-value">\\(z^{[1]}_1\\) = ${fc(s.Z1[0])}\n\\(z^{[1]}_2\\) = ${fc(s.Z1[1])}\n\\(z^{[1]}_3\\) = ${fc(s.Z1[2])}</div>
     <div class="ref-source">from Step 4: Hidden Layer 1 Weighted Sum (forward) — used to gate ReLU</div>
   </div>
   <div class="ref-section">
@@ -1291,38 +1984,66 @@ ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it
     <div class="ref-source">from Step 1: Data Prep (standardized)</div>
   </div>
   <div class="ref-section">
-    <div class="ref-label">Incoming gradients ∂L/∂a (Layer 1)</div>
-    <div class="ref-value">∂L/∂a_1 = ${fc(s.dA1[0])}\n∂L/∂a_2 = ${fc(s.dA1[1])}\n∂L/∂a_3 = ${fc(s.dA1[2])}</div>
+    <div class="ref-label">Incoming gradients ∂L/∂a^[1] (Layer 1)</div>
+    <div class="ref-value">\\(\\partial L / \\partial a^{[1]}_1\\) = ${fc(s.dA1[0])}\n\\(\\partial L / \\partial a^{[1]}_2\\) = ${fc(s.dA1[1])}\n\\(\\partial L / \\partial a^{[1]}_3\\) = ${fc(s.dA1[2])}</div>
     <div class="ref-source">from Step 13: Hidden Layer 2 Backward</div>
   </div>
   <div class="ref-section">
     <div class="ref-label">Where used in formulas</div>
-    <div class="ref-value">ReLU gate uses <strong>z</strong> (alive if z>0)\nWeight grad uses <strong>x</strong> (the input)</div>
+    <div class="ref-value">ReLU gate uses <strong>\\(z^{[1]}\\)</strong> (alive if z > 0)\nWeight grad uses <strong>\\(x\\)</strong> (the input)</div>
   </div>`,
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  z_i     = pre-activation from forward pass (used to gate ReLU)\n`;
-    t += `  x       = the standardized input value (Ad Spend → x)\n`;
-    t += `  ∂L/∂a_i = incoming gradient (for Layer 1 activations)\n`;
-    t += `  ∂L/∂z_i = gradient AFTER ReLU gate\n`;
-    t += `  ∂L/∂w_i = sensitivity of loss to weight W1[i] (output)\n`;
-    t += `  ∂L/∂b_i = sensitivity of loss to bias b1[i] (output)</div>\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(z^{[1]}_i\\)',                          'Layer 1 pre-activation from forward pass (gates ReLU)'],
+      ['\\(x\\)',                                  'the standardized input value (Ad Spend → x)'],
+      ['\\(W^{[1]}_i\\)',                          'Layer 1 weight for neuron i'],
+      ['\\(b^{[1]}_i\\)',                          'Layer 1 bias for neuron i'],
+      ['\\(\\partial L / \\partial a^{[1]}_i\\)',  'incoming gradient (for Layer 1 activations)'],
+      ['\\(\\partial L / \\partial z^{[1]}_i\\)',  'gradient AFTER ReLU gate'],
+      ['\\(\\partial L / \\partial W^{[1]}_i\\)',  'sensitivity of loss to weight \\(W^{[1]}_i\\) (produced this step)'],
+      ['\\(\\partial L / \\partial b^{[1]}_i\\)',  'sensitivity of loss to bias \\(b^{[1]}_i\\) (produced this step)']
+    ]) + `\n`;
     t += `ReLU 1 backward (gate gradients through):\n`;
     for (let i = 0; i < 3; i++) {
       const alive = s.Z1[i] > 0;
       const cls = alive ? 'alive' : 'dead';
-      t += `  <span class="${cls}">∂L/∂z${i+1}: z=${fc(s.Z1[i])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ1[i])}</span>\n`;
+      t += `  <span class="${cls}">\\(\\partial L / \\partial z^{[1]}_${i+1}\\): z=${fc(s.Z1[i])} ${alive ? '> 0 ✓' : '≤ 0 ✗'}  →  ${fc(s.dZ1[i])}</span>\n`;
     }
-    t += `\nDense 1 weight gradients (∂L/∂w_i = x × ∂L/∂z_i):\n`;
+    t += `\nDense 1 weight gradients — full formula: \\(\\partial L / \\partial W^{[1]}_i = x \\cdot \\partial L / \\partial z^{[1]}_i + 2\\lambda W^{[1]}_i\\)\n`;
+    t += `(\\(\\lambda\\) = ${s.lambda})\n\n`;
     for (let i = 0; i < 3; i++)
-      t += `  ∂L/∂w${i+1} = x × ∂L/∂z${i+1} = ${fw(s.x)} × ${fc(s.dZ1[i])} = <span class="result">${fc(s.dW1g[i])}</span>\n`;
-    t += `\nBias gradients (∂L/∂b_i = ∂L/∂z_i):\n`;
+      t += `  \\(\\partial L / \\partial W^{[1]}_${i+1}\\) = ${fw(s.x)}×${fc(s.dZ1[i])} + 2×${s.lambda}×${fw(W1[i])}  =  ${fc(s.dW1data[i])} + ${fc(s.dW1L2[i])} = <span class="result">${fc(s.dW1g[i])}</span>\n`;
+    // Preview the 3 W^[1] updates Step 17 will apply
+    t += `\n  Where these 3 weight gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(W^{[1]}_{i,\\text{new}} = W^{[1]}_{i,\\text{old}} - \\eta \\cdot \\partial L / \\partial W^{[1]}_i\\)  with \\(\\eta\\) = ${LR}\n`;
+    for (let i = 0; i < 3; i++) {
+      const grad = s.dW1g[i];
+      const prod = LR * grad;
+      const wOld = W1[i];
+      const wNew = s.W1n[i];
+      t += `    \\(W^{[1]}_${i+1}\\):  ${fw(wOld)} − (${LR} × ${fc(grad)}) = ${fw(wOld)} − (${fc(prod)}) = <span class="result">${fc(wNew)}</span>\n`;
+    }
+    t += `\nDense 1 bias gradients (\\(\\partial L / \\partial b^{[1]}_i = \\partial L / \\partial z^{[1]}_i\\)):\n`;
     for (let i = 0; i < 3; i++)
-      t += `  ∂L/∂b${i+1} = <span class="result">${fc(s.db1g[i])}</span>\n`;
-    t += `\nBackpropagation complete! We now have gradients\nfor ALL 22 parameters in the network.`;
+      t += `  \\(\\partial L / \\partial b^{[1]}_${i+1}\\) = <span class="result">${fc(s.db1g[i])}</span>\n`;
+    // Preview the 3 b^[1] updates Step 17 will apply
+    t += `\n  Where these 3 bias gradients go next (Step 17 updates):\n`;
+    t += `    formula: \\(b^{[1]}_{i,\\text{new}} = b^{[1]}_{i,\\text{old}} - \\eta \\cdot \\partial L / \\partial b^{[1]}_i\\)\n`;
+    for (let i = 0; i < 3; i++) {
+      const grad = s.db1g[i];
+      const prod = LR * grad;
+      const bOld = b1[i];
+      const bNew = s.b1n[i];
+      t += `    \\(b^{[1]}_${i+1}\\):  ${fw(bOld)} − (${LR} × ${fc(grad)}) = ${fw(bOld)} − (${fc(prod)}) = <span class="result">${fc(bNew)}</span>\n`;
+    }
+    t += `\nBackpropagation complete! We now have gradients\nfor ALL 22 parameters in the network — and every one of them\nhas been previewed against the Step 17 update formula above.`;
     return t;
   })(),
-  explain: `<p><strong>The blame reaches the first layer.</strong> Same pattern: ReLU gates the gradient, then Dense computes how sensitive each weight is to the error.</p>
+  explain: compass(
+    '<strong>6 terminal gradients</strong> for Layer 1\'s parameters (3 weight + 3 bias) — sensitivity scores for the input layer. No pass-back gradients needed (Layer 1 is the first layer; nothing earlier to send a signal to). ReLU 1 gates the incoming gradients first.',
+    'These are the LAST 6 of the 22 gradients. After this step, every weight and bias in the network has its own sensitivity score. Backpropagation is complete.',
+    '<strong>All 6 terminal gradients → Step 17</strong> (Weight Update). After Step 17, the network has been updated by one tiny step. In real training this whole cycle (forward → loss → backward → update) repeats thousands of times until the loss plateaus.'
+  ) + `<p><strong>The blame reaches the first layer.</strong> Same pattern: ReLU gates the gradient, then Dense computes how sensitive each weight is to the error.</p>
 <p>We now have a <strong>sensitivity score (gradient) for every single weight and bias</strong> in the entire network -- all 22 of them. Each gradient answers: "If I increase this parameter by a tiny amount, how much does the error change?"</p>
 <p><strong>The big picture:</strong> Think of it like running a regression where your "coefficients" are the weight updates. Large gradient = this weight had a big impact on the error and needs a big correction. Small gradient = minor player. Zero gradient = irrelevant (dead neuron path).</p>
 <div class="key-insight"><strong>Why "chain rule"?</strong> The gradient for w1 in Layer 1 was computed by multiplying sensitivity scores through 6 operations: Loss &rarr; Linear &rarr; Dense3 &rarr; ReLU2 &rarr; Dense2 &rarr; ReLU1 &rarr; Dense1. Each link in the chain says "how sensitive am I to my input?" and we multiply them all together. In statistics, this is like computing an <strong>indirect effect</strong> through a chain of mediating variables. That's backpropagation -- just repeated multiplication of local sensitivities!</div>`,
@@ -1337,9 +2058,9 @@ ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it
         '∂L/∂z'+(i+1), fc(s.dZ1[i]));
       activateEdge(0, 0, i, alive ? 'flow-bwd' : 'edge dead');
       // Edge label = the weight gradient with full name (∂L/∂w_i)
-      showWeight(0, 0, i, '∂L/∂w'+(i+1)+'='+fc(s.dW1g[i]));
+      showWeight(0, 0, i, '∂L/∂W^[1]_'+(i+1)+'='+fc(s.dW1g[i]));
       // Below each Hidden 1 node = the bias gradient
-      showBias(1, i, '∂L/∂b'+(i+1)+'='+fc(s.db1g[i]));
+      showBias(1, i, '∂L/∂b^[1]_'+(i+1)+'='+fc(s.db1g[i]));
     }
   }
 },
@@ -1347,33 +2068,54 @@ ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it
 // ── 12: Weight Update ──
 {
   phase: 'update', title: 'Weight & Bias Update',
-  formula: 'w_new = w_old - lr × ∂L/∂w\n(learning rate = ' + LR + ')',
+  formula: String.raw`$$W_{\text{new}} = W_{\text{old}} - \eta \cdot \frac{\partial L}{\partial W} \qquad b_{\text{new}} = b_{\text{old}} - \eta \cdot \frac{\partial L}{\partial b} \qquad (\eta = ` + LR + String.raw`)`,
+  formulaCaption: '<strong>What it does:</strong> Nudges every weight and bias a tiny step in the OPPOSITE direction of its gradient — i.e., downhill on the loss surface. This is one training step.',
   calc: (() => {
-    let t = `<div class="var-defs">Variable definitions:\n`;
-    t += `  w_old   = current weight value (BEFORE update)\n`;
-    t += `  w_new   = updated weight value (AFTER update)\n`;
-    t += `  lr      = learning rate (step size for each update)\n`;
-    t += `  ∂L/∂w   = gradient — sensitivity of loss to this weight\n`;
-    t += `  Subtract because gradient points UPHILL (away from min);\n`;
-    t += `  we move in the OPPOSITE direction = downhill = lower loss.</div>\n`;
-    t += `Learning rate: ${LR}\n\n`;
-    t += `═══ Layer 1 Weights ═══\n`;
+    let t = vd('Variable definitions:', [
+      ['\\(W_{\\text{old}}\\,/\\,b_{\\text{old}}\\)',  'current weight/bias values (BEFORE update)'],
+      ['\\(W_{\\text{new}}\\,/\\,b_{\\text{new}}\\)',  'updated weight/bias values (AFTER update)'],
+      ['\\(\\eta\\) (lr)',                            'learning rate (step size for each update)'],
+      ['\\(\\partial L / \\partial W,\\ \\partial L / \\partial b\\)', 'gradients computed by backpropagation']
+    ], `Subtract because gradient points UPHILL (away from minimum); we move in the OPPOSITE direction = downhill = lower loss.\n\nNote: this is plain SGD. The companion Python file uses Adam, which adapts each parameter's effective step size. Same idea, more sophisticated stepping.`) + `\n`;
+    t += `Learning rate \\(\\eta\\) = ${LR}\n\n`;
+    t += `═══ Layer 1 Weights (\\(W^{[1]}\\)) ═══\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W1n[i];
       const ch = nw - W1[i];
-      t += `  w${i+1}: ${fw(W1[i])} - ${LR}×${fc(s.dW1g[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(W^{[1]}_${i+1}\\): ${fw(W1[i])} − ${LR}×${fc(s.dW1g[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Layer 2 Weights (sample) ═══\n`;
+    t += `\n═══ Layer 1 Biases (\\(b^{[1]}\\)) ═══\n`;
     for (let i = 0; i < 3; i++) {
-      const nw = s.W2n[i][0];
-      const ch = nw - W2[i][0];
-      t += `  w[${i}][0]: ${fw(W2[i][0])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      const nb = s.b1n[i];
+      const ch = nb - b1[i];
+      t += `  \\(b^{[1]}_${i+1}\\): ${fw(b1[i])} − ${LR}×${fc(s.db1g[i])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Layer 3 Weights ═══\n`;
+    t += `\n═══ Layer 2 Weights (\\(W^{[2]}\\) — all 9 weights) ═══\n`;
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        const nw = s.W2n[i][j];
+        const ch = nw - W2[i][j];
+        t += `  \\(W^{[2]}_{${i+1},${j+1}}\\): ${fw(W2[i][j])} − ${LR}×${fc(s.dW2[i][j])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      }
+      if (i < 2) t += `\n`; // blank line between source-row groups
+    }
+    t += `\n═══ Layer 2 Biases (\\(b^{[2]}\\)) ═══\n`;
+    for (let j = 0; j < 3; j++) {
+      const nb = s.b2n[j];
+      const ch = nb - b2[j];
+      t += `  \\(b^{[2]}_${j+1}\\): ${fw(b2[j])} − ${LR}×${fc(s.db2g[j])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+    }
+    t += `\n═══ Output Layer Weights (\\(W^{[3]}\\)) ═══\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W3n[i];
       const ch = nw - W3[i];
-      t += `  w${i+1}: ${fw(W3[i])} → <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+      t += `  \\(W^{[3]}_${i+1}\\): ${fw(W3[i])} − ${LR}×${fc(s.dW3[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
+    }
+    t += `\n═══ Output Layer Bias (\\(b^{[3]}\\)) ═══\n`;
+    {
+      const nb = s.b3n;
+      const ch = nb - b3;
+      t += `  \\(b^{[3]}\\): ${fw(b3)} − ${LR}×${fc(s.db3g)} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
     // Compute new prediction
     const Z1n = s.W1n.map((w, i) => s.x * w + s.b1n[i]);
@@ -1383,16 +2125,18 @@ ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it
     const yPredNew = A2n[0]*s.W3n[0]+A2n[1]*s.W3n[1]+A2n[2]*s.W3n[2]+s.b3n;
     const lossNew = (s.yTrue - yPredNew) ** 2;
     t += `\n═══ Result After Update ═══\n`;
-    t += `  Old prediction: ${fc(s.yPred)}  |  Loss: ${fc(s.loss)}\n`;
-    t += `  New prediction: <span class="result">${fc(yPredNew)}</span>  |  Loss: <span class="result">${fc(lossNew)}</span>\n`;
-    t += `  Improvement: ${f4(s.loss - lossNew)} (${((1 - lossNew/s.loss)*100).toFixed(1)}% reduction)`;
+    t += `  Old \\(\\hat{y}\\): ${fc(s.yPred)}  |  Old \\(L\\): ${fc(s.loss)}\n`;
+    t += `  New \\(\\hat{y}\\): <span class="result">${fc(yPredNew)}</span>  |  New \\(L\\): <span class="result">${fc(lossNew)}</span>\n`;
+    t += `  Improvement: ${f4(s.loss - lossNew)} (${((1 - lossNew/s.loss)*100).toFixed(1)}% reduction)\n`;
+    t += `\n  Real training repeats this loop 1000+ times until the loss plateaus.`;
     return t;
   })(),
-  explain: `<p>The <strong>update rule</strong> is simple: take each weight's sensitivity score (gradient), scale it by a small step size (learning rate = ${LR}), and subtract it from the current weight.</p>
-<p><strong>Why subtract?</strong> The gradient points "uphill" -- the direction that <em>increases</em> the error. We want to go <em>downhill</em> (reduce error), so we move in the opposite direction. This is called <strong>gradient descent</strong>.</p>
-<p><strong>The learning rate (${LR})</strong> controls how big each step is. Too large and you <em>leap over</em> the valley and land on the other side (the loss actually gets worse!). Too small and you inch toward the bottom but it takes forever. Picking the right step size is one of the most important decisions in training.</p>
-<p>Weights with zero gradient (dead ReLU paths) don't change at all -- there's no slope to follow, so there's no direction to step.</p>
-<div class="key-insight"><strong>🏔️ Mountain analogy -- the full loop:</strong> We just completed one full cycle: predicted (walked forward) &rarr; measured the error (checked altitude) &rarr; felt the slope for every weight (backpropagation) &rarr; took one step downhill (weight update). In real training, we repeat this <strong>thousands of times</strong>, each time inching closer to the valley. The fog means we might settle in a <em>local</em> minimum (a shallow valley) instead of the global minimum (the deepest one) -- but in practice, that's usually good enough. The regression notebook uses <strong>Adam</strong>, a smarter optimizer that adapts each weight's step size automatically, for 10,000 of these cycles.</div>`,
+  explain: `<p>The <strong>update rule</strong> is simple: take each weight's (or bias's) sensitivity score (gradient), scale it by a small step size (learning rate \\(\\eta\\) = ${LR}), and subtract it from the current value. <strong>Biases follow the exact same rule</strong> as weights — we're just walking downhill on a different parameter.</p>
+<p><strong>Why subtract?</strong> The gradient \\(\\partial L/\\partial \\theta\\) points "uphill" — the direction that <em>increases</em> the error. We want to go <em>downhill</em> (reduce error), so we move in the opposite direction. This is called <strong>gradient descent</strong>.</p>
+<p><strong>The learning rate \\(\\eta\\) (= ${LR})</strong> controls how big each step is. Too large and you <em>leap over</em> the valley and land on the other side (the loss actually gets worse!). Too small and you inch toward the bottom but it takes forever. Picking the right step size is one of the most important decisions in training.</p>
+<p>Weights with zero gradient (\\(\\partial L/\\partial W = 0\\), e.g. dead ReLU paths) don't change at all — there's no slope to follow, so there's no direction to step.</p>
+<p><strong>What you just saw is plain SGD.</strong> In practice you'll usually see <strong>Adam</strong> instead — same idea (subtract a step in the gradient direction), but Adam adapts the step size <em>per parameter</em> using historical gradient information. Adam tends to converge faster and more reliably. Our companion Python code uses Adam at \\(\\eta\\) = 0.005.</p>
+<div class="key-insight"><strong>🏔️ Mountain analogy — the full loop:</strong> We just completed one full cycle: predicted (walked forward) → measured the error (checked altitude) → felt the slope for every parameter (backpropagation) → took one step downhill (weight + bias update). In real training, we repeat this <strong>thousands of times</strong>, each time inching closer to the valley. The fog means we might settle in a <em>local</em> minimum (a shallow valley) instead of the global minimum (the deepest one) — but in practice, that's usually good enough. The regression notebook uses <strong>Adam</strong>, a smarter optimizer that adapts each weight's step size automatically, for thousands of these cycles.</div>`,
   render(s) {
     dimAll();
 
@@ -1403,34 +2147,59 @@ ${s.dLdy > 0 ? 'Positive gradient → prediction is TOO HIGH → need to push it
     const A2n = Z2n.map(z => Math.max(0, z));
     const yPredNew = A2n[0]*s.W3n[0] + A2n[1]*s.W3n[1] + A2n[2]*s.W3n[2] + s.b3n;
 
-    // Activate all nodes with the update color + show new values
+    // Activate all nodes with the update color + show new values + properly-typeset labels
     activateNode(0, 0, 'active-update', 'x', fw(s.x));
     for (let i = 0; i < 3; i++) {
-      activateNode(1, i, 'active-update', 'h1.'+(i+1), fc(A1n[i]));
-      showBias(1, i, 'b='+fw(s.b1n[i]));
+      activateNode(1, i, 'active-update', 'a^[1]_'+(i+1), fc(A1n[i]));
+      showBias(1, i, 'b^[1]_'+(i+1)+'='+fw(s.b1n[i]));
     }
     for (let j = 0; j < 3; j++) {
-      activateNode(2, j, 'active-update', 'h2.'+(j+1), fc(A2n[j]));
-      showBias(2, j, 'b='+fw(s.b2n[j]));
+      activateNode(2, j, 'active-update', 'a^[2]_'+(j+1), fc(A2n[j]));
+      showBias(2, j, 'b^[2]_'+(j+1)+'='+fw(s.b2n[j]));
     }
     activateNode(3, 0, 'active-update', 'ŷ', fc(yPredNew));
-    showBias(3, 0, 'b='+fw(s.b3n));
+    showBias(3, 0, 'b^[3]='+fw(s.b3n));
 
-    // Show all NEW weight values on every edge
+    // Show all NEW weight values on every edge (with parameter name)
     for (let i = 0; i < 3; i++) {
-      showWeight(0, 0, i, fw(s.W1n[i]));
+      showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(s.W1n[i]));
       activateEdge(0, 0, i, 'edge active-update');
     }
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
-        showWeight(1, i, j, fw(s.W2n[i][j]));
+        showWeight(1, i, j, 'W^[2]_{'+(i+1)+','+(j+1)+'}='+fw(s.W2n[i][j]));
         activateEdge(1, i, j, 'edge active-update');
       }
     }
     for (let i = 0; i < 3; i++) {
-      showWeight(2, i, 0, fw(s.W3n[i]));
+      showWeight(2, i, 0, 'W^[3]_'+(i+1)+'='+fw(s.W3n[i]));
       activateEdge(2, i, 0, 'edge active-update');
     }
+  }
+},
+
+// ── 17: Full Visual Representation (animated walkthrough) ──
+{
+  phase: 'summary', title: 'Full Visual Representation',
+  formula: 'Forward Pass → Loss → Backward Pass (animated)',
+  formulaCaption: '<strong>What it does:</strong> Walks through the complete forward + backward cycle one stage at a time in the network diagram. Press Play to auto-advance, or use Prev/Next to step manually.',
+  calc: `<div id="anim-controls" class="anim-ctrl-bar">
+  <button id="anim-restart-btn" type="button" class="anim-btn" onclick="restartAnim()">↻ Restart</button>
+  <button id="anim-prev-btn" type="button" class="anim-btn" onclick="stepAnim(-1)">◀ Prev</button>
+  <button id="anim-play-btn" type="button" class="anim-btn anim-btn-primary" onclick="toggleAnim()">▶ Play</button>
+  <button id="anim-next-btn" type="button" class="anim-btn" onclick="stepAnim(1)">Next ▶</button>
+  <span id="anim-stage-counter" class="anim-counter"></span>
+</div>
+<div id="anim-stage-info" class="anim-stage-info">
+  <div id="anim-stage-title" class="anim-stage-title"></div>
+  <div id="anim-stage-desc" class="anim-stage-desc"></div>
+</div>`,
+  explain: `<p>This step is a <strong>visual recap</strong> of everything you just walked through. The animation traces a single input \\(x\\) all the way through the forward pass to produce a prediction \\(\\hat{y}\\), measures the loss \\(L\\), then propagates blame backward to compute a gradient for every one of the 22 weights and biases.</p>
+<p>Each stage highlights what's happening at that moment — values appear at every node and edge as they come into play. Dead ReLU neurons stay red, alive ones turn blue (forward) or orange (backward) so you can see the "dying ReLU" effect propagate through both directions.</p>
+<p>By the end, all 22 gradients are computed and ready for Step 17's weight-update formula \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\). In real training, the entire 12-stage cycle you see here runs <strong>once per training sample</strong> (or per batch with averaged gradients) — often <em>millions</em> of times across an entire training run.</p>
+<div class="key-insight"><strong>One full loop = one tiny step downhill.</strong> What unfolds in this 18-second animation is a single trip from "input enters" to "all gradients ready." Real training stacks thousands of these on top of each other, nudging the 22 parameters a little at a time until the loss plateaus.</div>`,
+  render(s) {
+    initFullAnim(s);
   }
 }
 
@@ -1477,9 +2246,57 @@ function setAllEdges(cls) {
   getEl('e-loss').className.baseVal = cls;
 }
 
+// Render a label like "W^[3]_1=0.90" or "∂L/∂W^[2]_{1,1}=0.32" into an SVG
+// <text> element with proper superscript/subscript tspans, so the math
+// notation visually matches the LaTeX used elsewhere on the page. Recognized
+// markers:
+//   ^X    → superscript single char X
+//   ^[..] → superscript [..] (brackets included)
+//   ^{..} → superscript contents of {..}
+//   _Y    / _{..} → subscript (same rules)
+// Anything else is plain text. SVG <tspan> with dy is used for the offset,
+// followed by a counter-dy tspan to return to the baseline.
+function applyMathLabel(textEl, str) {
+  if (!textEl) return;
+  textEl.textContent = '';
+  if (str == null || str === '') return;
+  let i = 0;
+  while (i < str.length) {
+    const ch = str[i];
+    if (ch === '^' || ch === '_') {
+      const dyUp   = ch === '^' ? -4 :  4;
+      const dyBack = ch === '^' ?  4 : -4;
+      i++;
+      let content = '';
+      if (str[i] === '{') {
+        const close = str.indexOf('}', i);
+        content = str.slice(i + 1, close === -1 ? str.length : close);
+        i = close === -1 ? str.length : close + 1;
+      } else if (str[i] === '[') {
+        const close = str.indexOf(']', i);
+        content = str.slice(i, close === -1 ? str.length : close + 1);
+        i = close === -1 ? str.length : close + 1;
+      } else {
+        content = str[i] || '';
+        i++;
+      }
+      // Superscript / subscript glyph
+      const t = el('tspan', { dy: dyUp, 'font-size': '70%' }, content);
+      textEl.appendChild(t);
+      // Counter-shift back to baseline for following text
+      const back = el('tspan', { dy: dyBack }, '​');
+      textEl.appendChild(back);
+    } else {
+      let start = i;
+      while (i < str.length && str[i] !== '^' && str[i] !== '_') i++;
+      textEl.appendChild(document.createTextNode(str.slice(start, i)));
+    }
+  }
+}
+
 function activateNode(li, ni, cls, lbl, val) {
   getEl('c-'+nid(li,ni)).className.baseVal = 'node-circle active ' + cls;
-  getEl('lbl-'+nid(li,ni)).textContent = lbl;
+  applyMathLabel(getEl('lbl-'+nid(li,ni)), lbl);
   getEl('val-'+nid(li,ni)).textContent = val;
 }
 
@@ -1489,12 +2306,12 @@ function activateEdge(li, fi, ti, cls) {
 
 function showWeight(li, fi, ti, txt) {
   const wl = getEl('wl-'+eid(li, fi, ti));
-  wl.textContent = txt;
+  applyMathLabel(wl, txt);
   wl.className.baseVal = 'weight-label active';
 }
 
 function showBias(li, ni, txt) {
-  getEl('bias-'+nid(li, ni)).textContent = txt;
+  applyMathLabel(getEl('bias-'+nid(li, ni)), txt);
 }
 
 function setLoss(lbl, val, circleCls) {
@@ -1512,35 +2329,97 @@ let currentStep = 0;
 let state = computeAll(0.5);
 let steps = getSteps(state);
 
+const PHASES = [
+  { label: 'Intro', ids: [0], cls: 'intro' },
+  { label: 'Data Prep', ids: [1], cls: 'data' },
+  { label: 'Forward Propagation', ids: [2,3,4,5,6,7,8], cls: 'forward' },
+  { label: 'Loss', ids: [9, 10], cls: 'loss' },
+  { label: 'Backward Propagation', ids: [11,12,13,14,15], cls: 'backward' },
+  { label: 'Update Weights', ids: [16], cls: 'update' },
+  { label: 'Visualization', ids: [17], cls: 'summary' },
+];
+
 function buildStepBar() {
   const bar = getEl('step-bar');
   bar.innerHTML = '';
-  const phases = [
-    { label: 'Intro', ids: [0], cls: 'intro' },
-    { label: 'Data Prep', ids: [1], cls: 'data' },
-    { label: 'Forward Propagation', ids: [2,3,4,5,6,7,8], cls: 'forward' },
-    { label: 'Loss', ids: [9], cls: 'loss' },
-    { label: 'Backward Propagation', ids: [10,11,12,13,14], cls: 'backward' },
-    { label: 'Update Weights', ids: [15], cls: 'update' },
-  ];
-  phases.forEach(ph => {
-    const lbl = document.createElement('span');
-    lbl.className = 'phase-label';
-    lbl.textContent = ph.label;
-    bar.appendChild(lbl);
+  PHASES.forEach((ph, phIdx) => {
+    const group = document.createElement('div');
+    // Only the Intro phase starts expanded; all others collapsed but clickable
+    group.className = 'phase-group' + (phIdx === 0 ? ' expanded' : '');
+    group.id = 'phase-group-' + phIdx;
+
+    const header = document.createElement('div');
+    header.className = 'phase-group-header';
+    header.innerHTML = `
+      <span class="chevron">▶</span>
+      <span class="phase-dot ${ph.cls}"></span>
+      <span class="phase-name">${ph.label}</span>
+      <span class="phase-count">${ph.ids.length}</span>
+    `;
+    header.onclick = () => group.classList.toggle('expanded');
+    group.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'step-list';
     ph.ids.forEach(id => {
-      const dot = document.createElement('div');
-      dot.className = 'step-dot ' + ph.cls;
-      dot.textContent = id;
-      dot.title = steps[id].title;
-      dot.onclick = () => { currentStep = id; renderStep(); };
-      dot.id = 'dot-' + id;
-      bar.appendChild(dot);
+      const item = document.createElement('div');
+      item.className = 'step-item';
+      item.id = 'dot-' + id;
+      item.dataset.phaseCls = ph.cls;
+      item.title = `Click to jump to Step ${id + 1}: ${steps[id].title}`;
+      item.innerHTML = `<span class="step-num">${id + 1}</span><span class="step-name">${steps[id].title}</span>`;
+      item.onclick = (e) => {
+        e.stopPropagation();
+        currentStep = id;
+        renderStep();
+        // Close mobile sidebar after selecting
+        getEl('sidebar').classList.remove('open');
+        getEl('sidebar-overlay').classList.remove('show');
+      };
+      list.appendChild(item);
     });
+    group.appendChild(list);
+    bar.appendChild(group);
   });
 }
 
+function updateSidebarStates() {
+  const nextStepId = currentStep + 1 < steps.length ? currentStep + 1 : null;
+  // Update step item statuses (completed/current/upcoming/next-up)
+  PHASES.forEach(ph => {
+    ph.ids.forEach(id => {
+      const item = getEl('dot-' + id);
+      if (!item) return;
+      item.classList.remove('completed', 'current', 'upcoming', 'next-up',
+        'intro', 'data', 'forward', 'loss', 'backward', 'update');
+      if (id < currentStep) item.classList.add('completed');
+      else if (id === currentStep) {
+        item.classList.add('current');
+        item.classList.add(ph.cls);
+        // Auto-expand the current phase if collapsed
+        const phaseIdx = PHASES.indexOf(ph);
+        const group = getEl('phase-group-' + phaseIdx);
+        if (group) group.classList.add('expanded');
+      } else {
+        item.classList.add('upcoming');
+        if (id === nextStepId) {
+          item.classList.add('next-up');
+        }
+      }
+    });
+  });
+
+  // Update progress bar
+  const total = steps.length;
+  const fill = ((currentStep + 1) / total) * 100;
+  getEl('sidebar-progress-fill').style.width = fill + '%';
+  getEl('sidebar-progress-text').textContent = `Step ${currentStep + 1} of ${total}`;
+}
+
 function renderStep() {
+  // Stop any animation running from a previous step (Step 18 in particular)
+  if (typeof stopAnim === 'function') stopAnim();
+
   state = computeAll(parseFloat(getEl('x-slider').value));
   steps = getSteps(state);
 
@@ -1552,28 +2431,79 @@ function renderStep() {
   getEl('network-wrap').style.display = isIntro ? 'none' : 'block';
   getEl('slider-group').style.display = isIntro ? 'none' : 'flex';
 
-  // dots
-  document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active'));
-  getEl('dot-' + currentStep).classList.add('active');
+  // sidebar step states (completed / current / upcoming)
+  updateSidebarStates();
 
   // title
   getEl('step-title').innerHTML =
-    `<span class="phase-tag ${step.phase}">${{intro:'intro',data:'data preparation',forward:'forward propagation',loss:'loss',backward:'backward propagation',update:'update weights'}[step.phase]}</span> ${step.title}`;
+    `<span class="phase-tag ${step.phase}">${{intro:'intro',data:'data preparation',forward:'forward propagation',loss:'loss',backward:'backward propagation',update:'update weights',summary:'visualization'}[step.phase]}</span> ${step.title}`;
 
   // formula card
   const fc = getEl('formula-card');
   fc.className = 'card card-formula ' + step.phase;
   getEl('formula-box').className = 'formula-box ' + step.phase;
-  getEl('formula-box').textContent = step.formula;
-  getEl('calc-block').innerHTML = step.calc;
+  // Render the formula. If it starts with the LaTeX marker $$ we use KaTeX,
+  // otherwise we fall back to plain text (for non-math intro lines).
+  const fbox = getEl('formula-box');
+  if (typeof step.formula === 'string' && step.formula.startsWith('$$')) {
+    const latex = step.formula.slice(2);   // strip the $$ prefix marker
+    try {
+      katex.render(latex, fbox, { displayMode: true, throwOnError: false });
+    } catch (e) {
+      fbox.textContent = latex;
+    }
+  } else {
+    fbox.textContent = step.formula;
+  }
+  // Formula caption — short one-liner explaining what the formula does
+  const captionEl = getEl('formula-caption');
+  if (step.formulaCaption) {
+    captionEl.innerHTML = step.formulaCaption;
+    captionEl.style.display = '';
+  } else {
+    captionEl.innerHTML = '';
+    captionEl.style.display = 'none';
+  }
+  const calcBlock = getEl('calc-block');
+  calcBlock.innerHTML = step.calc;
+  // Render any inline LaTeX inside the calc block (var-defs, formulas in text)
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(calcBlock, {
+      delimiters: [
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true }
+      ],
+      throwOnError: false
+    });
+  }
 
   // explain card
-  getEl('explain-content').innerHTML = step.explain;
+  const explainContent = getEl('explain-content');
+  explainContent.innerHTML = step.explain;
+  if (typeof renderMathInElement === 'function') {
+    renderMathInElement(explainContent, {
+      delimiters: [
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true }
+      ],
+      throwOnError: false
+    });
+  }
 
   // reference card (only on backward steps that need it)
   if (step.ref) {
-    getEl('ref-content').innerHTML = step.ref;
+    const refContent = getEl('ref-content');
+    refContent.innerHTML = step.ref;
     getEl('info-grid').classList.add('with-ref');
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(refContent, {
+        delimiters: [
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true }
+        ],
+        throwOnError: false
+      });
+    }
   } else {
     getEl('info-grid').classList.remove('with-ref');
   }
@@ -1585,8 +2515,406 @@ function renderStep() {
   getEl('btn-prev').disabled = currentStep === 0;
   getEl('btn-next').disabled = currentStep === steps.length - 1;
 
-  // render SVG
-  step.render(state);
+  // ── Network tabs: show on backprop steps so the user can toggle
+  //    between the gradient-flow diagram and a cumulative forward-values
+  //    diagram showing every forward value backprop has touched so far. ──
+  const tabsEl = getEl('network-tabs');
+  if (tabsEl) {
+    if (BACKPROP_STEP_INDICES.has(currentStep)) {
+      tabsEl.style.display = '';
+      // Always reset to "backward" view when the user moves to a new step
+      currentNetworkView = 'backward';
+      tabsEl.querySelectorAll('.network-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === currentNetworkView);
+      });
+    } else {
+      tabsEl.style.display = 'none';
+      currentNetworkView = 'backward'; // not really used outside backprop
+    }
+  }
+
+  // render SVG (backward by default; forward view available via tabs on backprop steps)
+  if (currentNetworkView === 'forward' && BACKPROP_STEP_INDICES.has(currentStep)) {
+    renderForwardCumulative(state, currentStep);
+  } else {
+    step.render(state);
+  }
+}
+
+// Backprop step indices (0-based array index). These are the steps where the
+// forward/backward tab toggle is exposed.
+const BACKPROP_STEP_INDICES = new Set([12, 13, 14, 15]);
+
+// Current view mode for the main network SVG on backprop steps. One of
+// 'backward' (default — gradient flow) or 'forward' (cumulative forward
+// values consumed by backprop steps up to and including the current one).
+let currentNetworkView = 'backward';
+
+function setNetworkView(mode) {
+  if (mode !== 'forward' && mode !== 'backward') return;
+  if (!BACKPROP_STEP_INDICES.has(currentStep)) return;
+  currentNetworkView = mode;
+  // Update tab active state
+  const tabsEl = getEl('network-tabs');
+  if (tabsEl) {
+    tabsEl.querySelectorAll('.network-tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.view === mode);
+    });
+  }
+  // Re-paint the SVG without rebuilding the rest of the page
+  if (mode === 'forward') {
+    renderForwardCumulative(state, currentStep);
+  } else {
+    steps[currentStep].render(state);
+  }
+}
+
+// Paint the SVG with the *cumulative* set of forward-pass values that
+// backprop has consumed from the loss-gradient step (12) up to the current
+// step. Each successive backprop step adds another layer of forward-pass
+// state to highlight, so the diagram grows as you walk backward.
+function renderForwardCumulative(s, stepIdx) {
+  dimAll();
+
+  // All backprop steps: prediction + loss are in play
+  if (stepIdx >= 12) {
+    activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+    showBias(3, 0, 'b^[3]='+fw(b3));
+    getEl('e-loss').className.baseVal = 'edge flow-fwd';
+    getEl('c-loss').setAttribute('stroke', 'var(--red)');
+    getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+    getEl('lbl-loss').textContent = 'L';
+    getEl('val-loss').textContent = f4(s.lossMSE);
+  }
+
+  // Step 14 (Output Layer) and later: Hidden 2 activations + W^[3] are used
+  if (stepIdx >= 13) {
+    for (let i = 0; i < 3; i++) {
+      const cls = s.A2[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+      activateNode(2, i, cls, 'a^[2]_'+(i+1), fc(s.A2[i]));
+      activateEdge(2, i, 0, 'flow-fwd');
+      showWeight(2, i, 0, 'W^[3]_'+(i+1)+'='+fw(W3[i]));
+    }
+  }
+
+  // Step 15 (Through ReLU 2 & Dense 2) and later:
+  // Hidden 1 activations + all 9 W^[2] weights + Layer 2 biases come into play
+  if (stepIdx >= 14) {
+    for (let i = 0; i < 3; i++) {
+      const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+      activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+      for (let j = 0; j < 3; j++) {
+        activateEdge(1, i, j, 'flow-fwd');
+        showWeight(1, i, j, 'W^[2]_{'+(i+1)+','+(j+1)+'}='+fw(W2[i][j]));
+      }
+    }
+    for (let j = 0; j < 3; j++) showBias(2, j, 'b^[2]_'+(j+1)+'='+fw(b2[j]));
+  }
+
+  // Step 16 (Through ReLU 1 & Dense 1): input x + W^[1] weights + Layer 1 biases
+  if (stepIdx >= 15) {
+    activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+    for (let i = 0; i < 3; i++) {
+      activateEdge(0, 0, i, 'flow-fwd');
+      showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(W1[i]));
+      showBias(1, i, 'b^[1]_'+(i+1)+'='+fw(b1[i]));
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// FULL ANIMATION (Step 18 — Full Visual Representation)
+// ════════════════════════════════════════════════════════════════
+
+let animState = { stage: 0, timer: null, playing: false };
+
+// Each stage applies a fresh paint to the SVG and provides a title + description
+// for the calc panel. Forward stages flow blue → into loss → backward stages
+// turn orange → final "complete" stage shows the whole network in purple
+// (matching Step 17's update color, signaling readiness for the update).
+const ANIM_STAGES = [
+  // ── FORWARD ──
+  {
+    title: '1. Input enters the network',
+    desc: 'The standardized input \\(x\\) flows in. This is the value we want to predict the target \\(y_{\\text{true}}\\) from.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+    }
+  },
+  {
+    title: '2. Hidden 1 weighted sum',
+    desc: 'Each Hidden 1 neuron computes \\(z^{[1]}_i = x \\cdot W^{[1]}_i + b^{[1]}_i\\) — combining the input with its weight and bias.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        activateNode(1, i, 'active-fwd', 'z^[1]_'+(i+1), fc(s.Z1[i]));
+        activateEdge(0, 0, i, 'flow-fwd');
+        showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(W1[i]));
+        showBias(1, i, 'b^[1]_'+(i+1)+'='+fw(b1[i]));
+      }
+    }
+  },
+  {
+    title: '3. Hidden 1 ReLU activation',
+    desc: 'Each \\(z^{[1]}_i\\) passes through ReLU: positive values flow through, negative values become \\(0\\). The outputs \\(a^{[1]}_i\\) become inputs for Layer 2. Red = dead neuron.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-fwd', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+        activateEdge(0, 0, i, 'flow-fwd');
+        showWeight(0, 0, i, 'W^[1]_'+(i+1)+'='+fw(W1[i]));
+      }
+    }
+  },
+  {
+    title: '4. Hidden 2 weighted sum',
+    desc: 'Each Hidden 2 neuron sums weighted inputs from all 3 Hidden 1 outputs: \\(z^{[2]}_j = \\sum_i a^{[1]}_i \\cdot W^{[2]}_{i,j} + b^{[2]}_j\\). Nine weight edges now matter.',
+    apply(s) {
+      dimAll();
+      for (let i = 0; i < 3; i++) {
+        const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+      }
+      for (let j = 0; j < 3; j++) {
+        activateNode(2, j, 'active-fwd', 'z^[2]_'+(j+1), fc(s.Z2[j]));
+        showBias(2, j, 'b^[2]_'+(j+1)+'='+fw(b2[j]));
+        for (let i = 0; i < 3; i++) {
+          activateEdge(1, i, j, 'flow-fwd');
+          showWeight(1, i, j, 'W^[2]_{'+(i+1)+','+(j+1)+'}='+fw(W2[i][j]));
+        }
+      }
+    }
+  },
+  {
+    title: '5. Hidden 2 ReLU activation',
+    desc: 'ReLU gates each \\(z^{[2]}_j\\) the same way as Layer 1. The outputs \\(a^{[2]}_j\\) head to the output layer.',
+    apply(s) {
+      dimAll();
+      for (let i = 0; i < 3; i++) {
+        const cls = s.A1[i] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(1, i, cls, 'a^[1]_'+(i+1), fc(s.A1[i]));
+      }
+      for (let j = 0; j < 3; j++) {
+        const cls = s.A2[j] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(2, j, cls, 'a^[2]_'+(j+1), fc(s.A2[j]));
+      }
+    }
+  },
+  {
+    title: '6. Output: prediction ŷ',
+    desc: 'Final layer (linear, no ReLU): \\(\\hat{y} = \\sum_i a^{[2]}_i \\cdot W^{[3]}_i + b^{[3]}\\). The number on the output node is the network\'s guess.',
+    apply(s) {
+      dimAll();
+      for (let j = 0; j < 3; j++) {
+        const cls = s.A2[j] > 0 ? 'active-fwd' : 'active-relu-dead';
+        activateNode(2, j, cls, 'a^[2]_'+(j+1), fc(s.A2[j]));
+      }
+      activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+      showBias(3, 0, 'b^[3]='+fw(b3));
+      for (let i = 0; i < 3; i++) {
+        activateEdge(2, i, 0, 'flow-fwd');
+        showWeight(2, i, 0, 'W^[3]_'+(i+1)+'='+fw(W3[i]));
+      }
+    }
+  },
+  {
+    title: '7. Loss: how wrong was the prediction?',
+    desc: 'MSE: \\(L = (y_{\\text{true}} - \\hat{y})^2\\). A single scalar measures the error — the network\'s "altitude" on the loss surface.',
+    apply(s) {
+      dimAll();
+      activateNode(3, 0, 'active-fwd', 'ŷ', fc(s.yPred));
+      getEl('e-loss').className.baseVal = 'edge flow-fwd';
+      getEl('c-loss').setAttribute('stroke', 'var(--red)');
+      getEl('c-loss').setAttribute('fill', 'var(--red-light)');
+      getEl('lbl-loss').textContent = 'L';
+      getEl('val-loss').textContent = f4(s.lossMSE);
+    }
+  },
+  // ── BACKWARD ──
+  {
+    title: '8. Backward starts: ∂L/∂ŷ',
+    desc: 'Compute the seed gradient: \\(\\partial L / \\partial \\hat{y} = -2(y_{\\text{true}} - \\hat{y})\\). Every other gradient flows from this one number.',
+    apply(s) {
+      dimAll();
+      activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', fc(s.dLdy));
+      getEl('e-loss').className.baseVal = 'edge flow-bwd';
+      getEl('c-loss').setAttribute('stroke', 'var(--orange)');
+      getEl('c-loss').setAttribute('fill', 'var(--orange-light)');
+      getEl('lbl-loss').textContent = 'L';
+      getEl('val-loss').textContent = f4(s.lossMSE);
+    }
+  },
+  {
+    title: '9. Output layer backprop',
+    desc: 'Compute \\(\\partial L/\\partial W^{[3]}_i\\) (3 terminal gradients) and \\(\\partial L/\\partial a^{[2]}_i\\) (gradient passed back to Layer 2).',
+    apply(s) {
+      dimAll();
+      activateNode(3, 0, 'active-bwd', '∂L/∂ŷ', fc(s.dLdy));
+      for (let i = 0; i < 3; i++) {
+        activateNode(2, i, 'active-bwd', '∂L/∂a', fc(s.dA2[i]));
+        activateEdge(2, i, 0, 'flow-bwd');
+        showWeight(2, i, 0, '∂L/∂W^[3]_'+(i+1)+'='+fc(s.dW3[i]));
+      }
+    }
+  },
+  {
+    title: '10. Through ReLU 2 & Dense Layer 2',
+    desc: 'ReLU 2 gates each gradient by its forward z (dead neurons block flow). Then compute 9 \\(\\partial L/\\partial W^{[2]}_{i,j}\\) and pass back to Layer 1.',
+    apply(s) {
+      dimAll();
+      for (let j = 0; j < 3; j++) {
+        const alive = s.Z2[j] > 0;
+        activateNode(2, j, alive ? 'active-bwd' : 'active-relu-dead', '∂L/∂z', fc(s.dZ2[j]));
+      }
+      for (let i = 0; i < 3; i++) {
+        activateNode(1, i, 'active-bwd', '∂L/∂a', fc(s.dA1[i]));
+        for (let j = 0; j < 3; j++) {
+          const alive = s.dZ2[j] !== 0 && s.A1[i] !== 0;
+          activateEdge(1, i, j, alive ? 'flow-bwd' : 'edge dead');
+        }
+      }
+    }
+  },
+  {
+    title: '11. Through ReLU 1 & Dense Layer 1',
+    desc: 'Final backprop layer. Compute 3 \\(\\partial L/\\partial W^{[1]}_i\\) and 3 bias gradients. All 22 sensitivity scores now exist.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-bwd', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        const alive = s.Z1[i] > 0;
+        activateNode(1, i, alive ? 'active-bwd' : 'active-relu-dead', '∂L/∂z', fc(s.dZ1[i]));
+        activateEdge(0, 0, i, alive ? 'flow-bwd' : 'edge dead');
+        showWeight(0, 0, i, '∂L/∂W^[1]_'+(i+1)+'='+fc(s.dW1g[i]));
+        showBias(1, i, '∂L/∂b^[1]_'+(i+1)+'='+fc(s.db1g[i]));
+      }
+    }
+  },
+  {
+    title: '12. Complete — 22 gradients ready for update',
+    desc: 'Forward + backward done. Every weight and bias has a gradient. Step 17 will now apply \\(W_{\\text{new}} = W_{\\text{old}} - \\eta \\cdot \\partial L/\\partial W\\) to all 22 parameters.',
+    apply(s) {
+      dimAll();
+      activateNode(0, 0, 'active-update', 'x', fw(s.x));
+      for (let i = 0; i < 3; i++) {
+        activateNode(1, i, 'active-update', 'a^[1]_'+(i+1), fc(s.A1[i]));
+        activateEdge(0, 0, i, 'edge active-update');
+      }
+      for (let j = 0; j < 3; j++) {
+        activateNode(2, j, 'active-update', 'a^[2]_'+(j+1), fc(s.A2[j]));
+        for (let i = 0; i < 3; i++) activateEdge(1, i, j, 'edge active-update');
+      }
+      activateNode(3, 0, 'active-update', 'ŷ', fc(s.yPred));
+      for (let i = 0; i < 3; i++) activateEdge(2, i, 0, 'edge active-update');
+      getEl('e-loss').className.baseVal = 'edge active-update';
+      getEl('c-loss').setAttribute('stroke', 'var(--purple)');
+      getEl('c-loss').setAttribute('fill', 'var(--purple-light)');
+      getEl('lbl-loss').textContent = 'L';
+      getEl('val-loss').textContent = f4(s.lossMSE);
+    }
+  }
+];
+
+const ANIM_INTERVAL_MS = 1700;
+
+function stopAnim() {
+  if (animState.timer) {
+    clearTimeout(animState.timer);
+    animState.timer = null;
+  }
+  animState.playing = false;
+}
+
+function initFullAnim(s) {
+  stopAnim();
+  animState.stage = 0;
+  animState.playing = false;
+  // Defer one tick so the calc-block HTML is in the DOM before we paint it
+  setTimeout(() => { runAnimStage(); updatePlayBtnLabel(); }, 0);
+}
+
+function runAnimStage() {
+  const stage = ANIM_STAGES[animState.stage];
+  if (!stage) return;
+  stage.apply(state);
+  const titleEl = getEl('anim-stage-title');
+  const descEl  = getEl('anim-stage-desc');
+  const counter = getEl('anim-stage-counter');
+  if (titleEl)  titleEl.textContent = stage.title;
+  if (descEl) {
+    descEl.innerHTML = stage.desc;
+    if (typeof renderMathInElement === 'function') {
+      renderMathInElement(descEl, {
+        delimiters: [
+          { left: '\\(', right: '\\)', display: false },
+          { left: '\\[', right: '\\]', display: true }
+        ],
+        throwOnError: false
+      });
+    }
+  }
+  if (counter) counter.textContent = `Stage ${animState.stage + 1} / ${ANIM_STAGES.length}`;
+  const prev = getEl('anim-prev-btn'); if (prev) prev.disabled = animState.stage === 0;
+  const next = getEl('anim-next-btn'); if (next) next.disabled = animState.stage === ANIM_STAGES.length - 1;
+}
+
+function updatePlayBtnLabel() {
+  const btn = getEl('anim-play-btn');
+  if (!btn) return;
+  btn.textContent = animState.playing ? '⏸ Pause' : '▶ Play';
+}
+
+function scheduleNext() {
+  if (!animState.playing) return;
+  animState.timer = setTimeout(() => {
+    if (animState.stage < ANIM_STAGES.length - 1) {
+      animState.stage++;
+      runAnimStage();
+      scheduleNext();
+    } else {
+      animState.playing = false;
+      updatePlayBtnLabel();
+    }
+  }, ANIM_INTERVAL_MS);
+}
+
+function playAnim() {
+  // If at the end, restart from the beginning
+  if (animState.stage >= ANIM_STAGES.length - 1) {
+    animState.stage = 0;
+    runAnimStage();
+  }
+  animState.playing = true;
+  updatePlayBtnLabel();
+  scheduleNext();
+}
+
+function pauseAnim() {
+  stopAnim();
+  updatePlayBtnLabel();
+}
+
+function toggleAnim() {
+  if (animState.playing) pauseAnim();
+  else playAnim();
+}
+
+function stepAnim(dir) {
+  pauseAnim();
+  const next = animState.stage + dir;
+  if (next < 0 || next >= ANIM_STAGES.length) return;
+  animState.stage = next;
+  runAnimStage();
+}
+
+function restartAnim() {
+  pauseAnim();
+  animState.stage = 0;
+  runAnimStage();
 }
 
 function goStep(dir) {
@@ -1625,6 +2953,20 @@ renderStep();
 
 // Wire up the Reset Layout button (after SVG is built)
 getEl('reset-layout-btn').addEventListener('click', () => { resetLayout(); renderStep(); });
+
+// Mobile sidebar toggle
+getEl('mobile-menu-btn').addEventListener('click', () => {
+  getEl('sidebar').classList.add('open');
+  getEl('sidebar-overlay').classList.add('show');
+});
+getEl('sidebar-close').addEventListener('click', () => {
+  getEl('sidebar').classList.remove('open');
+  getEl('sidebar-overlay').classList.remove('show');
+});
+getEl('sidebar-overlay').addEventListener('click', () => {
+  getEl('sidebar').classList.remove('open');
+  getEl('sidebar-overlay').classList.remove('show');
+});
 </script>
 </body>
 </html>
