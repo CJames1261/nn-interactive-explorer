@@ -449,11 +449,28 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .calc-block .result { font-weight: 700; }
 .calc-block .calc-section {
   display: block; font-weight: 700; font-size: .88rem;
-  color: #1e3a8a; margin: 14px 0 4px 0; white-space: normal;
-  border-bottom: 1px solid #cbd5e1; padding-bottom: 3px;
+  color: #1e3a8a; margin: 3px 0 1px 0; white-space: normal;
+  text-decoration: underline; text-underline-offset: 3px;
 }
 .calc-block .dead { color: var(--red); }
 .calc-block .alive { color: var(--green); }
+.calc-block .data-table {
+  border-collapse: collapse; width: 100%; margin: 4px 0 10px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: .82rem; white-space: normal;
+}
+.calc-block .data-table th {
+  background: #f1f5f9; color: #334155; font-weight: 700; font-size: .78rem;
+  text-transform: uppercase; letter-spacing: .03em;
+  padding: 6px 12px; border-bottom: 2px solid #cbd5e1; text-align: left;
+}
+.calc-block .data-table td {
+  padding: 5px 12px; border-bottom: 1px solid #e2e8f0; color: var(--text);
+}
+.calc-block .data-table tr.current-row {
+  background: var(--blue-light); font-weight: 700; color: var(--blue-dark);
+}
+.calc-block .data-table tr.current-row td { border-bottom-color: #93c5fd; }
 .calc-block .row-highlight { background: var(--blue-light); color: var(--blue-dark); font-weight: 700; display: inline-block; width: 100%; border-radius: 4px; padding: 1px 0; }
 .calc-block .var-defs {
   display: block;
@@ -1127,26 +1144,26 @@ function getSteps(s) {
     const months = ['Jan','Apr','Aug','Nov'];
     let t = `RAW dataset (synthetic for illustration):\n`;
     t += `Revenue here = sin(2π × scaled Ad Spend) × 50 + 50 — chosen because\n`;
-    t += `it's nonlinear (a neural network can learn it; linear regression cannot).\n\n`;
-    t += `  Row  |  Month   | Ad Spend  | Revenue\n`;
-    t += `  ─────┼──────────┼───────────┼──────────\n`;
+    t += `it's nonlinear (a neural network can learn it; linear regression cannot).\n`;
+    const curRev = (s.yTrue*50+50).toFixed(0);
+    const rawCur = '$'+(xv*50+50).toFixed(0)+'k';
+    t += `<table class="data-table">`;
+    t += `<tr><th>Row</th><th>Month</th><th>Ad Spend</th><th>Revenue</th></tr>`;
     for (let i = 0; i < 2; i++) {
       const rx = contextVals[i];
       const rawSpend = '$'+(rx*50+50).toFixed(0)+'k';
       const rev = '$'+(Math.sin(2*Math.PI*rx)*50+50).toFixed(0)+'k';
-      t += `    ${i+1}  |  ${months[i]}      | ${rawSpend.padStart(7)}   | ${rev.padStart(6)}\n`;
+      t += `<tr><td>${i+1}</td><td>${months[i]}</td><td>${rawSpend}</td><td>${rev}</td></tr>`;
     }
-    const curRev = (s.yTrue*50+50).toFixed(0);
-    const rawCur = '$'+(xv*50+50).toFixed(0)+'k';
-    const curRow = `  ► 3  |  CURRENT  | ${rawCur.padStart(7)}   | ${'$'+curRev+'k'}`;
-    t += `<span class="row-highlight">${curRow}</span>\n`;
+    t += `<tr class="current-row"><td>► 3</td><td>Current</td><td>${rawCur}</td><td>$${curRev}k</td></tr>`;
     for (let i = 2; i < 4; i++) {
       const rx = contextVals[i];
       const rawSpend = '$'+(rx*50+50).toFixed(0)+'k';
       const rev = '$'+(Math.sin(2*Math.PI*rx)*50+50).toFixed(0)+'k';
-      t += `    ${i+2}  |  ${months[i]}      | ${rawSpend.padStart(7)}   | ${rev.padStart(6)}\n`;
+      t += `<tr><td>${i+2}</td><td>${months[i]}</td><td>${rawSpend}</td><td>${rev}</td></tr>`;
     }
-    t += `\n  ► Highlighted row = your current Ad Spend value\n\n`;
+    t += `</table>`;
+    t += `► Highlighted row = your current Ad Spend value\n\n`;
     t += `  ─── Applying StandardScaler to both columns ───\n`;
     t += `  Formula: x_scaled = (value - mean) / std_dev\n\n`;
     t += `  Ad Spend:  mean = $50k,  std_dev = $50k\n`;
@@ -1223,6 +1240,7 @@ function getSteps(s) {
       ['\\(z^{[1]}_i\\)', 'Layer 1 pre-activation (weighted sum) for neuron i'],
       ['\\([1]\\)',       'layer index — Layer 1 (the first hidden layer)']
     ], `Note: in vector form this is \\(z^{[1]} = x \\cdot W^{[1]} + b^{[1]}\\)`) + `\n`;
+    t += `─── Calculations ───\n\n`;
     for (let i = 0; i < 3; i++) {
       t += `Neuron ${i+1}:  \\(z^{[1]}_${i+1} = x \\cdot W^{[1]}_${i+1} + b^{[1]}_${i+1}\\)\n`;
       t += `             = ${fw(s.x)} × ${fw(W1[i])} + ${fw(b1[i])}\n`;
@@ -1309,10 +1327,14 @@ function getSteps(s) {
     t += `  weights start RANDOM (small numbers near 0) and biases\n`;
     t += `  usually start at 0. Both are then UPDATED every iteration\n`;
     t += `  by gradient descent (see the final "Weight Update" step).\n\n`;
-    t += `Layer 2 weights (\\(W^{[2]}\\) matrix)     Layer 2 biases (\\(b^{[2]}\\))\n`;
-    t += `  \\(W^{[2]}_{1,\\cdot}\\) = [${fw(W2[0][0])}, ${fw(W2[0][1])}, ${fw(W2[0][2])}]    \\(b^{[2]}_1\\) = ${fw(b2[0])}\n`;
-    t += `  \\(W^{[2]}_{2,\\cdot}\\) = [${fw(W2[1][0])},  ${fw(W2[1][1])}, ${fw(W2[1][2])}]    \\(b^{[2]}_2\\) = ${fw(b2[1])}\n`;
-    t += `  \\(W^{[2]}_{3,\\cdot}\\) = [${fw(W2[2][0])}, ${fw(W2[2][1])},  ${fw(W2[2][2])}]    \\(b^{[2]}_3\\) = ${fw(b2[2])}\n\n`;
+    t += `<span class="calc-section">Layer 2 weights (\\(W^{[2]}\\) matrix)</span>\n`;
+    t += `  \\(W^{[2]}_{1,\\cdot}\\) = [${fw(W2[0][0])}, ${fw(W2[0][1])}, ${fw(W2[0][2])}]\n`;
+    t += `  \\(W^{[2]}_{2,\\cdot}\\) = [${fw(W2[1][0])}, ${fw(W2[1][1])}, ${fw(W2[1][2])}]\n`;
+    t += `  \\(W^{[2]}_{3,\\cdot}\\) = [${fw(W2[2][0])}, ${fw(W2[2][1])}, ${fw(W2[2][2])}]\n\n`;
+    t += `<span class="calc-section">Layer 2 biases (\\(b^{[2]}\\))</span>\n`;
+    t += `  \\(b^{[2]}_1\\) = ${fw(b2[0])}\n`;
+    t += `  \\(b^{[2]}_2\\) = ${fw(b2[1])}\n`;
+    t += `  \\(b^{[2]}_3\\) = ${fw(b2[2])}\n\n`;
     t += `─── Calculations ───\n\n`;
     for (let j = 0; j < 3; j++) {
       t += `Neuron ${j+1}:  \\(z^{[2]}_${j+1}\\) = `;
@@ -1401,17 +1423,17 @@ function getSteps(s) {
       ['\\(f()\\)',       'activation function — here it\'s LINEAR (identity)'],
       ['\\(\\hat{y}\\)',  'the network\'s final prediction (standardized)']
     ]) + `\n`;
-    t += `Output layer parameters (hardcoded for the demo):\n`;
+    t += `Output layer parameters (hardcoded for the demo):\n\n`;
     t += `  \\(W^{[3]}\\) = [${fw(W3[0])}, ${fw(W3[1])}, ${fw(W3[2])}]   \\(b^{[3]}\\) = ${fw(b3)}\n\n`;
     t += `─── Calculation ───\n\n`;
     const terms = [];
     for (let i = 0; i < 3; i++) terms.push(`${fc(s.A2[i])}×${fw(W3[i])}`);
-    t += `Step 1 — Weighted sum:\n`;
+    t += `  <strong>Step 1 — Weighted sum:</strong>\n`;
     t += `  \\(z^{[3]}\\) = ${terms.join(' + ')} + ${fw(b3)}\n`;
     const vals = s.A2.map((a,i) => fc(a * W3[i]));
     t += `        = ${vals.join(' + ')} + ${fw(b3)}\n`;
     t += `        = <span class="result">${fc(s.Z3)}</span>\n\n`;
-    t += `Step 2 — Linear activation (just passes through):\n`;
+    t += `  <strong>Step 2 — Linear activation (just passes through):</strong>\n`;
     t += `  \\(\\hat{y} = f(z^{[3]}) = z^{[3]}\\) = <span class="result">${fc(s.yPred)}</span>\n`;
     return t;
   })(),
@@ -1486,18 +1508,24 @@ function getSteps(s) {
 
     t += `─── Step A: sum of squared weights, layer by layer ───\n\n`;
     // Layer 1
-    t += `Layer 1 weights (3): \\(W^{[1]}\\) = [${W1.map(fw).join(', ')}]\n`;
+    t += `Layer 1 weights (3): \\(W^{[1]}\\) = [${W1.map(fw).join(', ')}]\n\n`;
     t += `  \\(\\sum (W^{[1]})^2\\) = ${W1.map(w => `${fw(w)}²`).join(' + ')}\n`;
     t += `             = ${W1.map(w => fc(w*w)).join(' + ')}\n`;
     t += `             = <span class="result">${fc(s.l2W1Sum)}</span>\n\n`;
     // Layer 2
-    t += `Layer 2 weights (9):\n`;
+    t += `Layer 2 weights (9): \\(W^{[2]}\\)\n`;
+    for (let i = 0; i < 3; i++) {
+      t += `  row ${i+1}: [${W2[i].map(fw).join(', ')}]\n`;
+    }
+    t += `\n`;
     for (let i = 0; i < 3; i++) {
       t += `  row ${i+1}: ${W2[i].map(w => `${fw(w)}²`).join(' + ')} = ${fc(W2[i].reduce((s,w)=>s+w*w,0))}\n`;
     }
-    t += `  \\(\\sum (W^{[2]})^2\\) = <span class="result">${fc(s.l2W2Sum)}</span>\n\n`;
+    t += `\n`;
+    const rowSums = W2.map(row => fc(row.reduce((s,w)=>s+w*w,0)));
+    t += `  \\(\\sum (W^{[2]})^2\\) = ${rowSums.join(' + ')} = <span class="result">${fc(s.l2W2Sum)}</span>\n\n`;
     // Layer 3
-    t += `Output weights (3): \\(W^{[3]}\\) = [${W3.map(fw).join(', ')}]\n`;
+    t += `Output weights (3): \\(W^{[3]}\\) = [${W3.map(fw).join(', ')}]\n\n`;
     t += `  \\(\\sum (W^{[3]})^2\\) = ${W3.map(w => `${fw(w)}²`).join(' + ')}\n`;
     t += `             = ${W3.map(w => fc(w*w)).join(' + ')}\n`;
     t += `             = <span class="result">${fc(s.l2W3Sum)}</span>\n\n`;
@@ -1762,12 +1790,12 @@ Click the Forward tab whenever you want to trace a number back to its source —
       ['\\(\\partial L / \\partial a^{[2]}_i\\)', 'gradient passed BACK to Layer 2 (for next step)']
     ]) + `\n`;
     t += `Incoming gradient: \\(\\partial L / \\partial \\hat{y}\\) = ${fc(s.dLdy)}\n\n`;
-    t += `Linear activation backward — derive WHY it passes through:\n`;
+    t += `Linear activation backward — derive WHY it passes through:\n\n`;
     t += `  Forward: \\(\\hat{y} = f(z^{[3]}) = z^{[3]}\\)   (identity function)\n`;
     t += `  Derivative: \\(df/dz = 1\\)\n`;
     t += `  Chain rule: \\(\\partial L / \\partial z^{[3]} = \\partial L / \\partial \\hat{y} \\times df/dz = \\partial L / \\partial \\hat{y} \\times 1 = \\partial L / \\partial \\hat{y}\\)\n`;
     t += `  → The gradient passes through unchanged.\n\n`;
-    t += `Layer 2 activations \\(a^{[2]}_i\\) used in weight gradients:\n`;
+    t += `Layer 2 activations \\(a^{[2]}_i\\) used in weight gradients:\n\n`;
     for (let i = 0; i < 3; i++) {
       const aliveA = s.A2[i] > 0;
       const cls = aliveA ? 'alive' : 'dead';
@@ -1886,7 +1914,7 @@ Click the Forward tab whenever you want to trace a number back to its source —
       ['\\(\\partial L / \\partial b^{[2]}_j\\)',  'sensitivity of loss to bias \\(b^{[2]}_j\\) (produced this step)'],
       ['\\(\\partial L / \\partial a^{[1]}_i\\)',  'gradient passed BACK to Layer 1 (for next step)']
     ]) + `\n`;
-    t += `ReLU 2 backward (gate gradients through):\n`;
+    t += `ReLU 2 backward (gate gradients through):\n\n`;
     for (let j = 0; j < 3; j++) {
       const alive = s.Z2[j] > 0;
       const cls = alive ? 'alive' : 'dead';
@@ -2006,7 +2034,7 @@ Click the Forward tab whenever you want to trace a number back to its source —
       ['\\(\\partial L / \\partial W^{[1]}_i\\)',  'sensitivity of loss to weight \\(W^{[1]}_i\\) (produced this step)'],
       ['\\(\\partial L / \\partial b^{[1]}_i\\)',  'sensitivity of loss to bias \\(b^{[1]}_i\\) (produced this step)']
     ]) + `\n`;
-    t += `ReLU 1 backward (gate gradients through):\n`;
+    t += `ReLU 1 backward (gate gradients through):\n\n`;
     for (let i = 0; i < 3; i++) {
       const alive = s.Z1[i] > 0;
       const cls = alive ? 'alive' : 'dead';
@@ -2081,19 +2109,19 @@ Click the Forward tab whenever you want to trace a number back to its source —
       ['\\(\\partial L / \\partial W,\\ \\partial L / \\partial b\\)', 'gradients computed by backpropagation']
     ], `Subtract because gradient points UPHILL (away from minimum); we move in the OPPOSITE direction = downhill = lower loss.\n\nNote: this is plain SGD. The companion Python file uses Adam, which adapts each parameter's effective step size. Same idea, more sophisticated stepping.`) + `\n`;
     t += `Learning rate \\(\\eta\\) = ${LR}\n\n`;
-    t += `═══ Layer 1 Weights (\\(W^{[1]}\\)) ═══\n`;
+    t += `═══ Layer 1 Weights (\\(W^{[1]}\\)) ═══\n\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W1n[i];
       const ch = nw - W1[i];
       t += `  \\(W^{[1]}_${i+1}\\): ${fw(W1[i])} − ${LR}×${fc(s.dW1g[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Layer 1 Biases (\\(b^{[1]}\\)) ═══\n`;
+    t += `\n═══ Layer 1 Biases (\\(b^{[1]}\\)) ═══\n\n`;
     for (let i = 0; i < 3; i++) {
       const nb = s.b1n[i];
       const ch = nb - b1[i];
       t += `  \\(b^{[1]}_${i+1}\\): ${fw(b1[i])} − ${LR}×${fc(s.db1g[i])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Layer 2 Weights (\\(W^{[2]}\\) — all 9 weights) ═══\n`;
+    t += `\n═══ Layer 2 Weights (\\(W^{[2]}\\) — all 9 weights) ═══\n\n`;
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
         const nw = s.W2n[i][j];
@@ -2102,19 +2130,19 @@ Click the Forward tab whenever you want to trace a number back to its source —
       }
       if (i < 2) t += `\n`; // blank line between source-row groups
     }
-    t += `\n═══ Layer 2 Biases (\\(b^{[2]}\\)) ═══\n`;
+    t += `\n═══ Layer 2 Biases (\\(b^{[2]}\\)) ═══\n\n`;
     for (let j = 0; j < 3; j++) {
       const nb = s.b2n[j];
       const ch = nb - b2[j];
       t += `  \\(b^{[2]}_${j+1}\\): ${fw(b2[j])} − ${LR}×${fc(s.db2g[j])} = <span class="result">${fc(nb)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Output Layer Weights (\\(W^{[3]}\\)) ═══\n`;
+    t += `\n═══ Output Layer Weights (\\(W^{[3]}\\)) ═══\n\n`;
     for (let i = 0; i < 3; i++) {
       const nw = s.W3n[i];
       const ch = nw - W3[i];
       t += `  \\(W^{[3]}_${i+1}\\): ${fw(W3[i])} − ${LR}×${fc(s.dW3[i])} = <span class="result">${fc(nw)}</span> (${ch >= 0 ? '+' : ''}${fc(ch)})\n`;
     }
-    t += `\n═══ Output Layer Bias (\\(b^{[3]}\\)) ═══\n`;
+    t += `\n═══ Output Layer Bias (\\(b^{[3]}\\)) ═══\n\n`;
     {
       const nb = s.b3n;
       const ch = nb - b3;
@@ -2127,7 +2155,7 @@ Click the Forward tab whenever you want to trace a number back to its source —
     const A2n = Z2n.map(z => Math.max(0, z));
     const yPredNew = A2n[0]*s.W3n[0]+A2n[1]*s.W3n[1]+A2n[2]*s.W3n[2]+s.b3n;
     const lossNew = (s.yTrue - yPredNew) ** 2;
-    t += `\n═══ Result After Update ═══\n`;
+    t += `\n═══ Result After Update ═══\n\n`;
     t += `  Old \\(\\hat{y}\\): ${fc(s.yPred)}  |  Old \\(L\\): ${fc(s.loss)}\n`;
     t += `  New \\(\\hat{y}\\): <span class="result">${fc(yPredNew)}</span>  |  New \\(L\\): <span class="result">${fc(lossNew)}</span>\n`;
     t += `  Improvement: ${f4(s.loss - lossNew)} (${((1 - lossNew/s.loss)*100).toFixed(1)}% reduction)\n`;
@@ -2473,6 +2501,9 @@ function renderStep() {
   // ─── Title ─── patterns → styled section headers
   calcHTML = calcHTML.replace(/^([ ]*)───\s*(.+?)\s*───[ ]*$/gm,
     (_, indent, title) => `<span class="calc-section">${title}</span>`);
+  // ═══ Title ═══ patterns (weight update step)
+  calcHTML = calcHTML.replace(/^═══\s*(.+?)\s*═══$/gm,
+    (_, title) => `<span class="calc-section">${title}</span>`);
   // ALL-CAPS HEADERS ending with : (like THE PROBLEM:, THE SOLUTION:)
   calcHTML = calcHTML.replace(/^(THE [A-Z][A-Z &—()\d,]+:?)$/gm,
     (_, title) => `<span class="calc-section">${title}</span>`);
@@ -2482,6 +2513,11 @@ function renderStep() {
   // Standalone title lines like "Where do W and b values come from?"
   calcHTML = calcHTML.replace(/^([A-Z][A-Za-z ]+\?)\n/gm,
     (_, title) => `<span class="calc-section">${title}</span>\n`);
+  // Lines ending with : that start with a capital and look like headers (e.g. "ReLU 2 backward (gate gradients through):")
+  calcHTML = calcHTML.replace(/^([A-Z][A-Za-z 0-9()—–]+:)\n/gm,
+    (_, title) => `<span class="calc-section">${title}</span>\n`);
+  // Collapse double blank lines after section headers only — CSS margin handles spacing
+  calcHTML = calcHTML.replace(/(<span class="calc-section">[^<]*<\/span>)\n\n/g, '$1\n');
   calcBlock.innerHTML = calcHTML;
   // Render any inline LaTeX inside the calc block (var-defs, formulas in text)
   if (typeof renderMathInElement === 'function') {
