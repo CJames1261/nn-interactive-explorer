@@ -443,8 +443,8 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   color: var(--gray-dark);
 }
 .calc-block {
-  font-family: "Consolas","Fira Code",monospace; font-size: .78rem;
-  line-height: 1.7; white-space: pre-wrap; color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: .84rem; line-height: 1.7; white-space: pre-wrap; color: var(--text);
 }
 .calc-block .result { font-weight: 700; }
 .calc-block .dead { color: var(--red); }
@@ -457,13 +457,14 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   padding: 10px 14px;
   border-radius: 6px;
   margin: 0 0 12px 0;
-  font-family: "Consolas","Fira Code",monospace;
-  font-size: .8rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: .82rem;
   line-height: 1.7;
   white-space: pre-wrap;
 }
 .calc-block .var-defs .vd-title {
-  font-weight: 600; margin-bottom: 6px; display: block;
+  font-weight: 700; margin-bottom: 6px; display: block;
+  font-size: .8rem;
 }
 .calc-block .var-defs .vd-grid {
   display: grid;
@@ -475,8 +476,10 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 }
 .calc-block .var-defs .vd-sym {
   white-space: nowrap; padding-left: 4px;
+  font-family: "Consolas","Fira Code",monospace; font-size: .8rem;
 }
-.calc-block .var-defs .vd-eq { opacity: .6; }
+.calc-block .var-defs .vd-eq { opacity: .6; font-family: "Consolas","Fira Code",monospace; }
+.calc-block .var-defs .vd-desc { font-size: .82rem; line-height: 1.5; }
 .calc-block .var-defs .vd-note {
   margin-top: 8px; padding-left: 4px;
   white-space: pre-wrap; line-height: 1.6;
