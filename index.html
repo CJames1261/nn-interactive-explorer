@@ -449,7 +449,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
 .calc-block .result { font-weight: 700; }
 .calc-block .calc-section {
   display: block; font-weight: 700; font-size: .88rem;
-  color: #1e3a8a; margin: 3px 0 1px 0; white-space: normal;
+  color: #1e3a8a; margin: 3px 0 4px 0; white-space: normal;
   text-decoration: underline; text-underline-offset: 3px;
 }
 .calc-block .dead { color: var(--red); }
@@ -2516,8 +2516,8 @@ function renderStep() {
   // Lines ending with : that start with a capital and look like headers (e.g. "ReLU 2 backward (gate gradients through):")
   calcHTML = calcHTML.replace(/^([A-Z][A-Za-z 0-9()—–]+:)\n/gm,
     (_, title) => `<span class="calc-section">${title}</span>\n`);
-  // Collapse double blank lines after section headers only — CSS margin handles spacing
-  calcHTML = calcHTML.replace(/(<span class="calc-section">[^<]*<\/span>)\n\n/g, '$1\n');
+  // Strip trailing newlines after section headers — display:block + CSS margin handles spacing
+  calcHTML = calcHTML.replace(/(<span class="calc-section">[^<]*<\/span>)\n+/g, '$1');
   calcBlock.innerHTML = calcHTML;
   // Render any inline LaTeX inside the calc block (var-defs, formulas in text)
   if (typeof renderMathInElement === 'function') {
