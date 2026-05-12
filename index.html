@@ -471,6 +471,24 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   background: var(--blue-light); font-weight: 700; color: var(--blue-dark);
 }
 .calc-block .data-table tr.current-row td { border-bottom-color: #93c5fd; }
+.calc-block .backprop-flow {
+  display: flex; align-items: center; gap: 6px; margin: 8px 0 4px 0;
+  white-space: normal; flex-wrap: wrap; justify-content: center;
+}
+.calc-block .backprop-flow .flow-step {
+  background: #fff7ed; border: 1.5px solid #f97316; border-radius: 6px;
+  padding: 4px 10px; font-weight: 700; font-size: .78rem; color: #9a3412;
+  text-align: center; line-height: 1.3;
+}
+.calc-block .backprop-flow .flow-step small {
+  display: block; font-weight: 400; font-size: .7rem; color: #b45309; opacity: .8;
+}
+.calc-block .backprop-flow .flow-step.done {
+  background: #f0fdf4; border-color: #22c55e; color: #166534;
+}
+.calc-block .backprop-flow .flow-arrow {
+  color: #f97316; font-size: 1rem; font-weight: 700;
+}
 .calc-block .row-highlight { background: var(--blue-light); color: var(--blue-dark); font-weight: 700; display: inline-block; width: 100%; border-radius: 4px; padding: 1px 0; }
 .calc-block .var-defs {
   display: block;
@@ -1635,10 +1653,7 @@ THE SOLUTION — BACKPROPAGATION:
   Walk the error BACKWARDS through the network, layer
   by layer, computing each weight's contribution to the
   error along the way.
-
-  Loss  →  Output  →  Hidden 2  →  Hidden 1  →  Done!
-  ────     ──────     ────────     ────────     ────
-  Step 1   Step 2     Step 3       Step 4
+<div class="backprop-flow"><div class="flow-step">Loss<small>Step 1</small></div><div class="flow-arrow">→</div><div class="flow-step">Output<small>Step 2</small></div><div class="flow-arrow">→</div><div class="flow-step">Hidden 2<small>Step 3</small></div><div class="flow-arrow">→</div><div class="flow-step">Hidden 1<small>Step 4</small></div><div class="flow-arrow">→</div><div class="flow-step done">Done!</div></div>
 
 THE TOOL — PARTIAL DERIVATIVES:
   Notation: \\(\\partial L / \\partial w\\) means "partial derivative of L with
