@@ -447,6 +447,11 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
   font-size: .84rem; line-height: 1.7; white-space: pre-wrap; color: var(--text);
 }
 .calc-block .result { font-weight: 700; }
+.calc-block .calc-section {
+  display: block; font-weight: 700; font-size: .88rem;
+  color: #1e3a8a; margin: 14px 0 4px 0; white-space: normal;
+  border-bottom: 1px solid #cbd5e1; padding-bottom: 3px;
+}
 .calc-block .dead { color: var(--red); }
 .calc-block .alive { color: var(--green); }
 .calc-block .row-highlight { background: var(--blue-light); color: var(--blue-dark); font-weight: 700; display: inline-block; width: 100%; border-radius: 4px; padding: 1px 0; }
@@ -2463,7 +2468,21 @@ function renderStep() {
     captionEl.style.display = 'none';
   }
   const calcBlock = getEl('calc-block');
-  calcBlock.innerHTML = step.calc;
+  // Auto-style section headers in calc content
+  let calcHTML = step.calc;
+  // ─── Title ─── patterns → styled section headers
+  calcHTML = calcHTML.replace(/^([ ]*)───\s*(.+?)\s*───[ ]*$/gm,
+    (_, indent, title) => `<span class="calc-section">${title}</span>`);
+  // ALL-CAPS HEADERS ending with : (like THE PROBLEM:, THE SOLUTION:)
+  calcHTML = calcHTML.replace(/^(THE [A-Z][A-Z &—()\d,]+:?)$/gm,
+    (_, title) => `<span class="calc-section">${title}</span>`);
+  // Indented ALL-CAPS headers (like "  THE OPTIMIZATION:")
+  calcHTML = calcHTML.replace(/^  (THE [A-Z][A-Z &—()\d,]+:?)$/gm,
+    (_, title) => `<span class="calc-section">${title}</span>`);
+  // Standalone title lines like "Where do W and b values come from?"
+  calcHTML = calcHTML.replace(/^([A-Z][A-Za-z ]+\?)\n/gm,
+    (_, title) => `<span class="calc-section">${title}</span>\n`);
+  calcBlock.innerHTML = calcHTML;
   // Render any inline LaTeX inside the calc block (var-defs, formulas in text)
   if (typeof renderMathInElement === 'function') {
     renderMathInElement(calcBlock, {
