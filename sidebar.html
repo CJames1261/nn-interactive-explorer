@@ -2344,8 +2344,8 @@ function buildStepBar() {
   bar.innerHTML = '';
   PHASES.forEach((ph, phIdx) => {
     const group = document.createElement('div');
-    // Only the Intro phase starts expanded; all others collapsed but clickable
-    group.className = 'phase-group' + (phIdx === 0 ? ' expanded' : '');
+    // All phases start expanded so every step is visible by default
+    group.className = 'phase-group expanded';
     group.id = 'phase-group-' + phIdx;
 
     const header = document.createElement('div');
