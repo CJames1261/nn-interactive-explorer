@@ -170,9 +170,11 @@ body {
   animation: nextPulse 2s ease-in-out infinite;
 }
 .step-item.next-up::after {
-  content: "← next"; font-size: .65rem;
-  color: var(--blue); font-weight: 700; margin-left: auto;
-  text-transform: uppercase; letter-spacing: .03em; flex-shrink: 0;
+  content: "Next »"; font-size: .72rem;
+  color: white; font-weight: 600; margin-left: auto;
+  background: var(--blue); border: 1px solid var(--blue-dark);
+  padding: 3px 12px; border-radius: 6px;
+  letter-spacing: .03em; flex-shrink: 0;
   opacity: 0; animation: nextHintFade 2s ease-in-out infinite;
 }
 @keyframes nextHintFade {
@@ -694,14 +696,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
     </div>
   </div>
 
-  <div class="controls" style="justify-content:flex-end;">
-    <div class="kbd" style="margin-right:auto;">Arrow keys: &larr; &rarr; &nbsp;|&nbsp; Home / End</div>
-    <div class="nav-group">
-      <button class="btn" id="btn-prev" onclick="goStep(-1)">&laquo; Prev</button>
-      <span class="step-counter" id="step-counter">1 / 14</span>
-      <button class="btn primary" id="btn-next" onclick="goStep(1)">Next &raquo;</button>
-    </div>
-  </div>
+  <!-- Navigation handled by sidebar -->
   </main>
 </div>
 
@@ -2508,12 +2503,12 @@ function renderStep() {
     getEl('info-grid').classList.remove('with-ref');
   }
 
-  // counter
-  getEl('step-counter').textContent = `${currentStep + 1} / ${steps.length}`;
+  // counter (bottom nav removed — sidebar is primary navigation)
+  const ctr = getEl('step-counter'); if (ctr) ctr.textContent = `${currentStep + 1} / ${steps.length}`;
 
-  // buttons
-  getEl('btn-prev').disabled = currentStep === 0;
-  getEl('btn-next').disabled = currentStep === steps.length - 1;
+  // buttons (bottom nav removed)
+  const prevBtn = getEl('btn-prev'); if (prevBtn) prevBtn.disabled = currentStep === 0;
+  const nextBtn = getEl('btn-next'); if (nextBtn) nextBtn.disabled = currentStep === steps.length - 1;
 
   // ── Network tabs: show on backprop steps so the user can toggle
   //    between the gradient-flow diagram and a cumulative forward-values
