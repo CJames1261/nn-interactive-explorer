@@ -1151,6 +1151,63 @@ function getSteps(s) {
   }
 },
 
+// ── 0b: When to Use ANNs ──
+{
+  phase: 'intro', title: 'When Should You Use a Neural Network?',
+  formula: 'Not every problem needs a neural network — but some problems need nothing less.',
+  formulaCaption: '<strong>Context:</strong> This demo is a learning exercise. We use a simple dataset so you can see every calculation — not because an ANN is the best tool for this particular data.',
+  calc: `─── Important Context ───
+
+This interactive demo uses a small, synthetic dataset
+(Ad Spend → Revenue) to walk through every calculation
+inside an artificial neural network, step by step.
+
+A simpler non-linear model (polynomial regression,
+splines, etc.) could fit this data just as well — or
+even better, with less overhead. We chose an ANN here
+not because it's the right tool for THIS dataset, but
+because it lets us clearly show how one works.
+
+─── Strengths of Neural Networks ───
+
+  ✓  Learn complex, non-linear relationships automatically
+  ✓  Scale to massive datasets (millions of rows)
+  ✓  Handle high-dimensional inputs (images, text, audio)
+  ✓  Discover features on their own (no manual engineering)
+  ✓  Flexible — same architecture adapts to many domains
+  ✓  State-of-the-art in vision, NLP, and generative AI
+
+─── Weaknesses of Neural Networks ───
+
+  ✗  Require large amounts of data to train well
+  ✗  Computationally expensive (GPU/TPU often needed)
+  ✗  "Black box" — hard to interpret why a prediction was made
+  ✗  Prone to overfitting on small datasets
+  ✗  Many hyperparameters to tune (layers, neurons, LR, etc.)
+  ✗  Overkill for simple or low-dimensional problems
+
+─── When to Reach for an ANN ───
+
+  • Your data is large and high-dimensional
+  • The relationship is too complex for traditional models
+  • You need to process unstructured data (images, text)
+  • Interpretability is less critical than accuracy
+
+─── When a Simpler Model is Better ───
+
+  • Small dataset (hundreds of rows, not thousands)
+  • Low-dimensional, tabular data
+  • You need clear explanations of predictions
+  • A linear or polynomial model already fits well`,
+  explain: `<p><strong>Neural networks are powerful, but they're not always the right choice.</strong> One of the most important skills in machine learning is knowing <em>when</em> to use which tool.</p>
+<p><strong>For this demo:</strong> We're using a tiny synthetic dataset with one input and one output. In practice, you'd never need a 22-parameter neural network for this — a polynomial regression or even a simple curve fit would work. But that simplicity is the point: it lets us trace every single number through the network without getting lost in scale.</p>
+<p><strong>In the real world,</strong> ANNs shine when the data is massive, high-dimensional, or unstructured (think images with millions of pixels, or text with complex grammar). For a small CSV with a handful of columns, start with linear regression, decision trees, or random forests — and only move to neural networks if those simpler models fall short.</p>
+<div class="key-insight"><strong>Rule of thumb:</strong> Start simple. If a linear model or random forest gets you 90% of the way there, the added complexity of a neural network may not be worth it. But when your data is rich and your problem is complex — that's where ANNs leave everything else behind.</div>`,
+  render(s) {
+    dimAll();
+  }
+},
+
 // ── 1: Data Preparation ──
 {
   phase: 'data', title: 'Data Preparation: Standardization',
@@ -2376,13 +2433,13 @@ let state = computeAll(0.5);
 let steps = getSteps(state);
 
 const PHASES = [
-  { label: 'Intro', ids: [0], cls: 'intro' },
-  { label: 'Data Prep', ids: [1], cls: 'data' },
-  { label: 'Forward Propagation', ids: [2,3,4,5,6,7,8], cls: 'forward' },
-  { label: 'Loss', ids: [9, 10], cls: 'loss' },
-  { label: 'Backward Propagation', ids: [11,12,13,14,15], cls: 'backward' },
-  { label: 'Update Weights', ids: [16], cls: 'update' },
-  { label: 'Visualization', ids: [17], cls: 'summary' },
+  { label: 'Intro', ids: [0, 1], cls: 'intro' },
+  { label: 'Data Prep', ids: [2], cls: 'data' },
+  { label: 'Forward Propagation', ids: [3,4,5,6,7,8,9], cls: 'forward' },
+  { label: 'Loss', ids: [10, 11], cls: 'loss' },
+  { label: 'Backward Propagation', ids: [12,13,14,15,16], cls: 'backward' },
+  { label: 'Update Weights', ids: [17], cls: 'update' },
+  { label: 'Visualization', ids: [18], cls: 'summary' },
 ];
 
 function buildStepBar() {
