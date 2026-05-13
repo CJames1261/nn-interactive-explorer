@@ -654,7 +654,7 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
           <feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <defs><marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10Z" fill="#ef4444"/></marker></defs>
+      <defs><marker id="arrowRed" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10Z" fill="#ef4444"/></marker></defs>
       <!-- Sky -->
       <rect x="0" y="0" width="880" height="400" fill="url(#skyGrad)"/>
       <!-- Background mountains -->
@@ -676,9 +676,9 @@ header p { font-size: .78rem; color: var(--gray); margin-top: 2px; }
       <circle cx="400" cy="155" r="10" fill="#ef4444" stroke="white" stroke-width="2.5" filter="url(#glow)"/>
       <text x="400" y="142" text-anchor="middle" font-size="11" fill="#dc2626" font-weight="700">You are here</text>
       <!-- Step arrow going downhill -->
-      <path d="M408,162 Q430,195 438,198" stroke="#ef4444" stroke-width="2" fill="none" marker-end="url(#arrowRed)"/>
-      <text x="448" y="190" font-size="10" fill="#dc2626" font-weight="700">Step downhill</text>
-      <text x="448" y="202" font-size="9" fill="#dc2626" font-weight="700">(learning rate = step size)</text>
+      <line x1="408" y1="164" x2="448" y2="198" stroke="#ef4444" stroke-width="2.5" marker-end="url(#arrowRed)"/>
+      <text x="458" y="192" font-size="10" fill="#dc2626" font-weight="700">Step downhill</text>
+      <text x="458" y="204" font-size="9" fill="#dc2626" font-weight="700">(learning rate = step size)</text>
       <!-- Gradient/slope indicator -->
       <line x1="375" y1="168" x2="395" y2="155" stroke="#7c3aed" stroke-width="2.5"/>
       <text x="350" y="180" text-anchor="middle" font-size="10" fill="#6d28d9" font-weight="700">Slope</text>
@@ -1132,26 +1132,7 @@ function vd(title, pairs, optionalNote) {
 function getSteps(s) {
   return [
 
-// ── 0: Why Neural Networks? (Mountain Analogy) ──
-{
-  phase: 'intro', title: 'The Challenge: Why Neural Networks?',
-  formula: 'Goal: Find the weights AND biases that minimize prediction error',
-  formulaCaption: '<strong>Goal:</strong> Find values for all 22 parameters that make the network\'s predictions as close as possible to the true targets.',
-  calc: `The Problem:\n  We have data. We want to predict outcomes.\n  But the relationship between inputs and outputs\n  is complex, nonlinear, and high-dimensional.\n\nThe Approach:\n  A neural network learns by trial and error:\n  1. Make a prediction (forward pass)\n  2. Measure how wrong it is (loss)\n  3. Figure out what to adjust (backpropagation)\n  4. Make small corrections (weight update)\n  5. Repeat thousands of times`,
-  explain: `<p><strong>Before we look at any math</strong>, let's understand what a neural network is actually trying to do -- and why it's hard.</p>
-<p>Look at the mountain landscape above. Imagine you're the <span style="color:#ef4444;font-weight:700">red dot</span>, standing on a mountain range <strong>in thick fog</strong>. Your goal: reach the lowest valley. That valley represents the <strong>best possible prediction</strong> your model can make.</p>
-<p><strong>The problem?</strong> You can't see the landscape. You don't know where the valleys are, how many there are, or how deep they go. All you can do is:</p>
-<p>1. <strong>Feel the slope under your feet</strong> <span style="color:#8b5cf6">(gradient)</span> -- is the ground tilting left, right, steep, or flat?<br>
-2. <strong>Take a step downhill</strong> <span style="color:#ef4444">(weight update)</span> -- move in the direction that goes down<br>
-3. <strong>Choose your step size</strong> (learning rate) -- too big and you leap over valleys; too small and you'll take forever</p>
-<p>You might end up in a <span style="color:#f97316;font-weight:600">local minimum</span> (a decent valley, but not the deepest one) instead of the <span style="color:#22c55e;font-weight:600">global minimum</span> (the absolute best). Because of the fog, you can never be 100% sure you found the best answer -- but in practice, a good valley is usually good enough.</p>
-<div class="key-insight"><strong>That's what the next steps will show you.</strong> We'll walk through every step of how a neural network makes a prediction (walks forward), measures its error (checks altitude), figures out which direction is downhill for each weight (backpropagation), and takes one step (weight update). By the end, you'll see exactly how the network learns -- one small step at a time.</div>`,
-  render(s) {
-    dimAll();
-  }
-},
-
-// ── 0b: When to Use ANNs ──
+// ── 0: When to Use ANNs ──
 {
   phase: 'intro', title: 'When Should You Use a Neural Network?',
   formula: 'Not every problem needs a neural network — but some problems need nothing less.',
@@ -1170,12 +1151,13 @@ because it lets us clearly show how one works.
 
 ─── Strengths of Neural Networks ───
 
-  ✓  Learn complex, non-linear relationships automatically
-  ✓  Scale to massive datasets (millions of rows)
   ✓  Handle high-dimensional inputs (images, text, audio)
-  ✓  Discover features on their own (no manual engineering)
+  ✓  Scale to massive datasets (millions of rows)
+  ✓  Learn hierarchical features automatically (e.g. edges
+     → shapes → objects in image recognition)
   ✓  Flexible — same architecture adapts to many domains
-  ✓  State-of-the-art in vision, NLP, and generative AI
+  ✓  Dominant in vision, NLP, and generative AI tasks
+  ✓  Can model extremely complex, non-linear patterns
 
 ─── Weaknesses of Neural Networks ───
 
@@ -1185,30 +1167,52 @@ because it lets us clearly show how one works.
   ✗  Prone to overfitting on small datasets
   ✗  Many hyperparameters to tune (layers, neurons, LR, etc.)
   ✗  Overkill for simple or low-dimensional problems
+  ✗  On tabular data, often outperformed by gradient boosting
+     (XGBoost, LightGBM) which trains faster and needs less data
 
 ─── When to Reach for an ANN ───
 
+  • You need to process unstructured data (images, text, audio)
   • Your data is large and high-dimensional
-  • The relationship is too complex for traditional models
-  • You need to process unstructured data (images, text)
-  • Interpretability is less critical than accuracy
+  • Simpler models have been tried and fall short
+  • You need to learn features automatically from raw data
 
 ─── When a Simpler Model is Better ───
 
   • Small dataset (hundreds of rows, not thousands)
-  • Low-dimensional, tabular data
+  • Structured, tabular data (try XGBoost, Random Forest first)
   • You need clear explanations of predictions
-  • A linear or polynomial model already fits well`,
-  explain: `<p><strong>Neural networks are powerful, but they're not always the right choice.</strong> One of the most important skills in machine learning is knowing <em>when</em> to use which tool.</p>
+  • A linear, polynomial, or tree-based model already fits well
+  • Training speed and resource cost matter`,
+  explain: `<p><strong>Neural networks are powerful, but they're not always the right choice.</strong> One of the most important skills in machine learning is knowing <em>when</em> to use which tool. Many non-linear models — random forests, gradient boosting, kernel SVMs, polynomial regression — can also capture complex patterns, often with less data and faster training.</p>
 <p><strong>For this demo:</strong> We're using a tiny synthetic dataset with one input and one output. In practice, you'd never need a 22-parameter neural network for this — a polynomial regression or even a simple curve fit would work. But that simplicity is the point: it lets us trace every single number through the network without getting lost in scale.</p>
-<p><strong>In the real world,</strong> ANNs shine when the data is massive, high-dimensional, or unstructured (think images with millions of pixels, or text with complex grammar). For a small CSV with a handful of columns, start with linear regression, decision trees, or random forests — and only move to neural networks if those simpler models fall short.</p>
-<div class="key-insight"><strong>Rule of thumb:</strong> Start simple. If a linear model or random forest gets you 90% of the way there, the added complexity of a neural network may not be worth it. But when your data is rich and your problem is complex — that's where ANNs leave everything else behind.</div>`,
+<p><strong>In the real world,</strong> ANNs shine when the data is unstructured (images, text, audio) or when the dataset is massive and high-dimensional. For structured tabular data — CSVs, spreadsheets, databases — gradient boosting methods like XGBoost frequently match or outperform neural networks while being faster to train and easier to interpret.</p>
+<div class="key-insight"><strong>Rule of thumb:</strong> Start simple. If a linear model, random forest, or XGBoost gets you most of the way there, the added complexity of a neural network may not be worth it. ANNs are most valuable when working with unstructured data or problems where simpler approaches have already been tried and fallen short.</div>`,
   render(s) {
     dimAll();
   }
 },
 
-// ── 1: Data Preparation ──
+// ── 1: Why Neural Networks? (Mountain Analogy) ──
+{
+  phase: 'intro', title: 'The Challenge: Why Neural Networks?',
+  formula: 'Goal: Find the weights AND biases that minimize prediction error',
+  formulaCaption: '<strong>Goal:</strong> Find values for all 22 parameters that make the network\'s predictions as close as possible to the true targets.',
+  calc: `The Problem:\n  We have data. We want to predict outcomes.\n  But the relationship between inputs and outputs\n  is complex, nonlinear, and high-dimensional.\n\nThe Approach:\n  A neural network learns by trial and error:\n  1. Make a prediction (forward pass)\n  2. Measure how wrong it is (loss)\n  3. Figure out what to adjust (backpropagation)\n  4. Make small corrections (weight update)\n  5. Repeat thousands of times`,
+  explain: `<p><strong>Before we look at any math</strong>, let's understand what a neural network is actually trying to do -- and why it's hard.</p>
+<p>Look at the mountain landscape above. Imagine you're the <span style="color:#ef4444;font-weight:700">red dot</span>, standing on a mountain range <strong>in thick fog</strong>. Your goal: reach the lowest valley. That valley represents the <strong>best possible prediction</strong> your model can make.</p>
+<p><strong>The problem?</strong> You can't see the landscape. You don't know where the valleys are, how many there are, or how deep they go. All you can do is:</p>
+<p>1. <strong>Feel the slope under your feet</strong> <span style="color:#8b5cf6">(gradient)</span> -- is the ground tilting left, right, steep, or flat?<br>
+2. <strong>Take a step downhill</strong> <span style="color:#ef4444">(weight update)</span> -- move in the direction that goes down<br>
+3. <strong>Choose your step size</strong> (learning rate) -- too big and you leap over valleys; too small and you'll take forever</p>
+<p>You might end up in a <span style="color:#f97316;font-weight:600">local minimum</span> (a decent valley, but not the deepest one) instead of the <span style="color:#22c55e;font-weight:600">global minimum</span> (the absolute best). Because of the fog, you can never be 100% sure you found the best answer -- but in practice, a good valley is usually good enough.</p>
+<div class="key-insight"><strong>That's what the next steps will show you.</strong> We'll walk through every step of how a neural network makes a prediction (walks forward), measures its error (checks altitude), figures out which direction is downhill for each weight (backpropagation), and takes one step (weight update). By the end, you'll see exactly how the network learns -- one small step at a time.</div>`,
+  render(s) {
+    dimAll();
+  }
+},
+
+// ── 2: Data Preparation ──
 {
   phase: 'data', title: 'Data Preparation: Standardization',
   formula: String.raw`$$\text{StandardScaler:}\quad x_{\text{scaled}} = \frac{\text{value} - \mu}{\sigma}`,
